@@ -48,9 +48,6 @@ CompilerClass = Tofino1P4C if CFG["switch"]['tofino'] == 1 else Tofino2P4C
 s1 = net.addTofino(CFG['switch']['name'], sde=SDE, sde_install=SDE_INSTALL, mac=CFG['switch']['mac'],
               ip=CFG['switch']['ip'], cls=Tofino1 if CFG['switch']['tofino'] == 1 else Tofino2)
 
-#  cls=Tofino1 if CFG['switch']['tofino'] == 1 else Tofino2
-
-
 net.setCompiler(compilerClass=CompilerClass, sde=SDE, sde_install=SDE_INSTALL)
 net.setP4Source(CFG['switch']['name'], os.path.join(SRC, CFG['switch']['program']))
 
