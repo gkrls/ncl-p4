@@ -1,0 +1,6 @@
+*.tofino/
+**log/
+**logs/
+**pcap/
+**topology.json
+**__pycache__**
