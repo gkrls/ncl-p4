@@ -8,8 +8,8 @@ from p4utils.mininetlib.network_API import NetworkAPI
 sys.path.append(os.path.join(os.path.dirname(
     os.path.abspath(__file__)), '..', '..', 'src', 'host'))
 
-from p4utils_extra import *
-from color import *
+from util.p4utils_extra import *
+from util.color import *
 
 COL_BOLD = '\033[1m'
 COL_END = '\033[0m'
