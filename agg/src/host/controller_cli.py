@@ -3,7 +3,7 @@ import sys
 import json
 import pprint
 from netaddr import IPAddress, EUI
-from util.color import Color
+from util.color import *
 
 P4 = bfrt.agg_32_single.pipe
 
@@ -64,7 +64,6 @@ def configure_switch_forwarding(cfg):
             print("  %s %s [%s] (%s)" % (prefix, mac, host['name'], "ok" if err is None else err))
 
 def configure_multicast(cfg):
-
     print(Color.BOLD + "Configuring multicast groups:" + Color.END)
 
     mg_node_ids = set()
@@ -87,7 +86,28 @@ def configure_multicast(cfg):
         except Exception as e:
             print(mgid, ports, e)
 
-CONFIG_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+def configure_switch_ports(cfg):
+    if cfg['switch']['platform'] == 'model':
+        return
+    print(Color.BOLD + "Configuring ports:" + Color.END)
+    for p in cfg['switch']['ports']:
+        cage = int(p if '/' not in p else p.split('/')[0])
+        port = bfrt.port.port_hdl_info.get(CONN_ID=cage, CHNL_ID=0, print_ents=False).data[b'$DEV_PORT']
+        desc = '100G/NO-FEC/NO-AN'
+        err = None
+        try:
+            bfrt.port.port.add(DEV_PORT=port, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
+                               AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE", PORT_ENABLE=True)
+        except Exception as e:
+            err = e
+
+        print("  %d [%d] %s (%s)" % (cage, port, desc, "ok" if err is None else err))
+
+
+CONFIG_JSON = "config-asic.json" if os.uname()[1] in ['netberg1', 'edgecore2'] else "config-model.json"
+CONFIG_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_JSON)
+
+print_bold("Configuring Tofino (%s)" % CONFIG_JSON, col=Color.DARKCYAN, emph=True)
 
 with open(CONFIG_JSON, 'r') as f:
     cfg = json.load(f)
@@ -96,3 +116,5 @@ configure_switch_endpoint(cfg)
 configure_switch_arp_resolver(cfg)
 configure_switch_forwarding(cfg)
 configure_multicast(cfg)
+if cfg['switch']['platform'] == 'asic':
+    configure_switch_ports(cfg)

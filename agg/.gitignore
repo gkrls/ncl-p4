@@ -4,3 +4,8 @@
 **pcap/
 **topology.json
 **__pycache__**
+
+**build/
+*.log
+**zlog**
+*.bz2

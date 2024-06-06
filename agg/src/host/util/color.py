@@ -12,9 +12,10 @@ class Color:
 
 def print_color(color, msg, emph=False, cb=None):
     if emph:
-        print(color + '+' + ('-' * 80) + '+' + Color.END)
+        longest = max([len(l) for l in msg.splitlines()])
+        print(color + '+' + ('-' * (longest - 2)) + '+' + Color.END)
         print(color + msg + Color.END)
-        print(color + '+' + ('-' * 80) + '+' + Color.END)
+        print(color + '+' + ('-' * (longest - 2)) + '+' + Color.END)
     else:
         print(color + msg + Color.END)
     if cb:
