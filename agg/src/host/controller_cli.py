@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pprint
 from netaddr import IPAddress, EUI
 from util.color import Color
@@ -44,8 +45,14 @@ def configure_switch_forwarding(cfg):
     I_FWD = P4.Ingress.forward.forwarding_table
     E_PORT = P4.Egress.port_table
 
-    for port in cfg['switch']['ports']:
-        for i, host in enumerate(cfg['switch']['ports'][port]):
+    for p in cfg['switch']['ports']:
+        if cfg['switch']['platform'] == 'asic':
+            cage = int(p if '/' not in p else p.split('/')[0])
+            port = bfrt.port.port_hdl_info.get(CONN_ID=cage, CHNL_ID=0, print_ents=False).data[b'$DEV_PORT']
+        else:
+            port = p
+
+        for i, host in enumerate(cfg['switch']['ports'][p]):
             err = None
             mac = EUI(host['mac'])
             try:
@@ -64,7 +71,13 @@ def configure_multicast(cfg):
     nid = 1
     rid = 1
     for mgid in cfg['switch']['multicast']:
-        ports = cfg['switch']['multicast'][mgid]['ports']
+
+        if cfg['switch']['platform'] == 'asic':
+            cages = cfg['switch']['multicast'][mgid]['ports']
+            ports = [bfrt.port.port_hdl_info.get(CONN_ID=c, CHNL_ID=0, print_ents=False).data[b'$DEV_PORT'] for c in cages]
+        else:
+            ports = cfg['switch']['multicast'][mgid]['ports']
+
         try :
             bfrt.pre.node.add(nid, rid, [], ports)
             bfrt.pre.mgid.add(int(mgid), [nid], [False], [0])
@@ -75,6 +88,9 @@ def configure_multicast(cfg):
             print(mgid, ports, e)
 
 CONFIG_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+with open(CONFIG_JSON, 'r') as f:
+    cfg = json.load(f)
 
 configure_switch_endpoint(cfg)
 configure_switch_arp_resolver(cfg)
