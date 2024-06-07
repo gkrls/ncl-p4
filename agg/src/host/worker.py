@@ -61,7 +61,7 @@ def run_scapy_allreduce(ver, data):
         ver = 1 - ver
         p_out = p / AGG(ver=ver, slot=slot, mask=MASK,
                         offset=offset, values=data[offset: offset + slot_size])
-        p_in = srp1(p_out, iface=get_first_available_interface(), verbose=0)
+        p_in = srp1(p_out, iface=iface, verbose=0)
         print(" %d/%d" % (slot, offset), ",".join(map(str, p_in['agg'].values)), '...')
     print()
 
