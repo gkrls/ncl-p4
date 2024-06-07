@@ -10,3 +10,5 @@
 **zlog**
 *.bz2
 .env/
+venv/
+env/
