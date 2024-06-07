@@ -13,7 +13,7 @@ parser.add_argument('-r', '--rank', required=True, type=int,
                     help="the worker's rank (1-based)")
 parser.add_argument('-c', '--config', help="path to config.json. Absolute or relative to $PWD",
                     default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json"))
-
+parser.add_argument('-i', '--iface', help="Interface to use (default=first available)", default=None)
 ARGS = parser.parse_args()
 
 print(ARGS.config)
@@ -55,6 +55,8 @@ def run_scapy_allreduce(ver, data):
         IP(dst=CONF['switch']['ip']) / UDP(sport=CONF['udp_port'], dport=CONF['udp_port'])
 
     slot_size = CONF['slot_size']
+    iface = ARGS.iface if ARGS.iface is not None else get_first_available_interface()
+
     for slot, offset in enumerate(range(0, len(data), slot_size)):
         ver = 1 - ver
         p_out = p / AGG(ver=ver, slot=slot, mask=MASK,
