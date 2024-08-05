@@ -1,0 +1,52 @@
+{
+  "__meta__": {
+    "compiler": {
+      "build": "Debug",
+      "commit": "0ebd1d0",
+      "version": "0.1.0"
+    },
+    "sources": [
+      "/home/gk/vbox-share/p4utils-lubuntu-20.04/ncl-p4/agg/src/device/allreduce.ncl"
+    ]
+  },
+  "compute": {
+    "1": {
+      "kernel": {
+        "demangled": "allreduce(unsigned int, unsigned char, unsigned short, unsigned short, unsigned short, unsigned int&, unsigned int*)",
+        "mangled": "_Z9allreducejhtttRjPj"
+      },
+      "spec": {
+        "bytes": [
+          4,
+          1,
+          2,
+          2,
+          2,
+          4,
+          4
+        ],
+        "counts": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          32
+        ],
+        "names": [
+          "offset",
+          "ver",
+          "bitmap_slot",
+          "slot",
+          "mask",
+          "expo",
+          "values"
+        ]
+      }
+    }
+  },
+  "memory": {
+    "managed": null
+  }
+}

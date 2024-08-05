@@ -43,14 +43,6 @@ control AggIngress(inout headers_t H,
   }
 
   action reflect() {
-    // // Swap ETH
-    // mac_addr_t tmp1 = H.eth.src_addr;
-    // H.eth.src_addr = H.eth.dst_addr;
-    // H.eth.dst_addr = tmp1;
-    // // Swap IP
-    // ip4_addr_t tmp2 = H.ip4.src_addr;
-    // H.ip4.src_addr = H.ip4.dst_addr;
-    // H.ip4.dst_addr = tmp2;
     TIM.ucast_egress_port = IM.ingress_port;
     TIM.bypass_egress = 1w0;
     DIM.drop_ctl[0:0] = 1w0;
