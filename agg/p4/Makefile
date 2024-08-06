@@ -1,9 +1,8 @@
 LOGDIR := $(shell pwd)/log
-NCL_SRC:= $(shell realpath "../../src/device-ncl/allreduce.ncl")
-P4_SRC:= $(shell realpath "../../src/device-p4/main.p4")
+P4_SRC:= $(shell realpath "switch.p4")
 
 switch-config:
-	mx s1 SDE=${SDE} SDE_INSTALL=${SDE}/install ${SDE}/run_bfshell.sh -b ${PWD}/cli-pipe-config.py
+	mx s1 SDE=${SDE} SDE_INSTALL=${SDE}/install ${SDE}/run_bfshell.sh -b ${PWD}/bfrt.py
 
 switch-cli:
 	mx s1 SDE=${SDE} SDE_INSTALL=${SDE}/install ${SDE}/run_bfshell.sh
@@ -18,10 +17,11 @@ tcpdump-hosts:
 
 tcpdump: tcpdump-switch tcpdump-hosts
 
-network:
+network: clean
 	SDE=${SDE} sudo -E python3 network.py ${P4_SRC}
 
 clean:
+	rm -rf build
 	rm -rf log
 	rm -f topology.json
 

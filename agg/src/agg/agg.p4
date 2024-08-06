@@ -14,7 +14,7 @@ control AggIngress(inout headers_t H,
   // 0: drops
   // 1: multicasts
   // 3: retransmissions
-  Counter<count_t, bit<8>>(3, CounterType_t.PACKETS) stats;
+  // Counter<count_t, bit<8>>(3, CounterType_t.PACKETS) stats;
 
   action even_slot() { M.real_slot = H.agg.slot;    }
   action odd_slot() { M.real_slot = H.agg.slot + AGG_SLOT_CNT; }

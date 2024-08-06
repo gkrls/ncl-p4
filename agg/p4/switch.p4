@@ -8,7 +8,7 @@
 control reducer(in bitmap_t bitmap_old, in bitmap_t bitmap_chk,
                 in slot_idx_t idx, inout value_t v) {
 
-  Register<value_t, slot_idx_t>(1024) R;
+  Register<value_t, slot_idx_t>(ALLREDUCE_AGG_SLOTS) R;
 
   RegisterAction<value_t, slot_idx_t, value_t>(R) add = {
     void apply(inout value_t reg, out value_t ret) {
@@ -34,14 +34,14 @@ control reducer(in bitmap_t bitmap_old, in bitmap_t bitmap_chk,
 
   action read_register() { v = get.execute(idx); }
 
-  action write_register() { v = get.execute(idx); }
+  action write_register() { v = set.execute(idx); }
 
   table reduce {
     key = {bitmap_old: ternary; bitmap_chk: ternary;}
     actions = {update_register; read_register; write_register; }
     const size = 32;
     const entries = {
-      (0, _) : write_register();
+      (0, 0) : write_register();
       (_, 0) : update_register();
       (_, _) : read_register();
     }
@@ -60,7 +60,8 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
   bitmap_t bitmap_chk;
   bit<32> count_old;
 
-  Register<pair<bitmap_t>, slot_idx_t>(1024) Bitmap;
+  Register<pair<bitmap_t>, slot_idx_t>(ALLREDUCE_BMP_SLOTS) Bitmap;
+
   RegisterAction<pair<bitmap_t>, slot_idx_t, bitmap_t>(Bitmap) bitmap_record_hi = {
     void apply(inout pair<bitmap_t> reg, out bitmap_t ret) {
       ret = reg.hi;
@@ -68,6 +69,7 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
       reg.lo = reg.lo & (~H.agg.mask); // clear lo
     }
   };
+
   RegisterAction<pair<bitmap_t>, slot_idx_t, bitmap_t>(Bitmap) bitmap_record_lo = {
     void apply(inout pair<bitmap_t> reg, out bitmap_t ret) {
       ret = reg.lo;
@@ -90,13 +92,13 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
     }
   }
 
-  Register<bit<32>, slot_idx_t>(1024) Count;
+  Register<bit<32>, slot_idx_t>(ALLREDUCE_AGG_SLOTS) Count;
 
   RegisterAction<bit<32>, slot_idx_t, bit<32>>(Count) update_counter = {
     void apply(inout bit<32> reg, out bit<32> ret) {
       ret = reg;
       if (reg == 0) {
-        reg = ALLREDUCE_NUM_WORKERS - 1;
+        reg = ALLREDUCE_WORKERS - 1;
       } else {
         reg = reg - 1;
       }
@@ -170,12 +172,14 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
   action next_drop() { DIM.drop_ctl[0:0] = 1; }
 
   table next {
-    key = {count_old: ternary;}
-    actions = {next_reflect; next_multicast; next_drop; }
+    key = { bitmap_chk: ternary; count_old: ternary; }
+    actions = { next_reflect; next_multicast; next_drop; }
     const entries = {
-      0: next_reflect();
-      1: next_multicast();
-      _: next_drop();
+      ( 0, 0): next_drop();      // First packet for slot
+      ( 0, 1): next_multicast(); // not seen and count == 1 ==> completed now
+      ( _, 0): next_reflect();   //     seen and count == 0 ==> completed earlier
+      ( _, _): next_drop();      // either not seen, count != 1
+                                 //            seen, count != 0
     }
   }
 
@@ -230,7 +234,7 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
 
 
 
-control forwarding( inout headers_t H, inout ingress_metadata_t M,
+control networking( inout headers_t H, inout ingress_metadata_t M,
                     in ingress_intrinsic_metadata_t IM,
                     in ingress_intrinsic_metadata_from_parser_t PIM,
                     inout ingress_intrinsic_metadata_for_deparser_t DIM,
@@ -240,19 +244,42 @@ control forwarding( inout headers_t H, inout ingress_metadata_t M,
     DIM.drop_ctl[0:0] = 0x0;
     TIM.ucast_egress_port = port;
   }
+
   action flood() {
     DIM.drop_ctl[0:0] = 0x0;
     TIM.mcast_grp_a = FLOOD_MULTICAST_GROUP_ID;
     TIM.level1_exclusion_id = (bit<16>) IM.ingress_port;
   }
+
   table forwarding_table {
     key = {H.eth.dst_addr: exact;}
     actions = { send_to_port; flood; }
     const default_action = flood;
     const size = FORWARDING_TABLE_CAPACITY;
   }
+
+  action arp_resolve(mac_addr_t mac) {
+    H.arp.opcode = ARP_RES;
+    H.arp_ip4.dst_hw_addr = H.arp_ip4.src_hw_addr;
+    H.arp_ip4.src_hw_addr = mac;
+    ip4_addr_t tmp = H.arp_ip4.dst_proto_addr;
+    H.arp_ip4.dst_proto_addr = H.arp_ip4.src_proto_addr;
+    H.arp_ip4.src_proto_addr = tmp;
+    H.eth.dst_addr = H.eth.src_addr;
+    H.eth.src_addr = mac;
+  }
+
+  table arp_table {
+    key = { H.arp_ip4.dst_proto_addr: exact; }
+    actions = { arp_resolve; NoAction; }
+    const default_action = NoAction;
+    const size = ARP_TABLE_CAPACITY;
+  }
+
   apply {
     TIM.bypass_egress = 0;
+    if (H.arp_ip4.isValid() && H.arp.opcode == ARP_REQ)
+      arp_table.apply();
     forwarding_table.apply();
   }
 }
@@ -264,13 +291,13 @@ control ingress( inout headers_t H, inout ingress_metadata_t M,
                  inout ingress_intrinsic_metadata_for_tm_t TIM ) {
 
   allreduce() agg;
-  forwarding() fwd;
+  networking() net;
 
   apply {
     if (H.agg.isValid())
       agg.apply(H, M, IM, PIM, DIM, TIM);
     else {
-      fwd.apply(H, M, IM, PIM, DIM, TIM);
+      net.apply(H, M, IM, PIM, DIM, TIM);
     }
   }
 }
@@ -281,28 +308,29 @@ control egress( inout headers_t H, inout egress_metadata_t M,
                 inout egress_intrinsic_metadata_for_deparser_t DIM,
                 inout egress_intrinsic_metadata_for_output_port_t OPIM ) {
 
-  action send(mac_addr_t mac, ip4_addr_t ip, udp_port_t port, bitmap_t mask) {
+  action send_to_worker(mac_addr_t mac, ip4_addr_t ip, bitmap_t mask) {
     H.eth.src_addr = H.eth.dst_addr;
     H.eth.dst_addr = mac;
     H.ip4.src_addr = H.ip4.dst_addr;
     H.ip4.dst_addr = ip;
     H.ip4.ttl = H.ip4.ttl |-| 1;
+    udp_port_t tmp = H.udp.src_port;
     H.udp.src_port = H.udp.dst_port;
-    H.udp.dst_port = port;
+    H.udp.dst_port = tmp;
     H.udp.checksum = 0;
     H.agg.mask = mask;
   }
 
-  table allreduce_worker_sender {
+  table allreduce_sender {
     key = { IM.egress_port: exact; }
-    actions = { send; NoAction;}
+    actions = { send_to_worker; NoAction;}
     size = ALLREDUCE_WORKER_TABLE_CAPACITY;
     const default_action = NoAction;
   }
 
   apply {
     if (H.agg.isValid())
-      allreduce_worker_sender.apply();
+      allreduce_sender.apply();
   }
 }
 

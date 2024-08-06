@@ -15,9 +15,23 @@ parser ingress_parser( packet_in P, out headers_t H,
   state parse_ethernet {
     P.extract(H.eth);
     transition select(H.eth.ether_type) {
+      ETH_ARP  : parse_arp;
       ETH_IPV4 : parse_ip4;
        default : accept;
     }
+  }
+
+  state parse_arp {
+    P.extract(H.arp);
+    transition select(H.arp.hw_type, H.arp.proto_type) {
+      (ARP_HTYPE_ETH, ARP_PTYPE_IP4) : parse_arp_ip4;
+                             default : accept;
+    }
+  }
+
+  state parse_arp_ip4 {
+    P.extract(H.arp_ip4);
+    transition accept;
   }
 
   state parse_ip4 {

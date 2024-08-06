@@ -13,7 +13,6 @@ typedef bit<16> eth_type_t;
 
 const eth_type_t ETH_IPV4   = 16w0x0800;
 const eth_type_t ETH_ARP    = 16w0x0806;
-const eth_type_t ETH_ROCEv1 = 16w0x8915;
 
 header ethernet_h {
   mac_addr_t dst_addr;
@@ -142,6 +141,8 @@ header agg_values_h {
 
 struct headers_t {
   ethernet_h eth;
+  arp_h      arp;
+  arp_ip4_h  arp_ip4;
   ip4_h      ip4;
   udp_h      udp;
   agg_h      agg;
