@@ -8,7 +8,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 SDE = os.environ['SDE']
 SDE_INSTALL = os.path.join(SDE, 'install')
 
-with open('config.json') as f:
+with open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'config.json'))) as f:
     C = json.load(f)['model']
     # WORKERS = C['model']['workers']
 
@@ -57,7 +57,7 @@ net.enableCli()
 s = C['device']['name']
 net.setCompiler(compilerClass=BF_P4C, sde=SDE, sde_install=SDE_INSTALL)
 net.addTofino(s, sde=SDE, sde_install=SDE_INSTALL, mac=C['device']['mac'], ip=C['device']['ip'])
-net.setP4Source(s, 'switch.p4')
+net.setP4Source(s, os.path.abspath(os.path.join(os.path.dirname(__file__), 'switch.p4')))
 
 for w in C['workers']:
     dport = T1Model.get_dport_from_fport(C['workers'][w]['port'], 0)

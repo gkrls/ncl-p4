@@ -3,7 +3,7 @@ import json
 import os
 
 with open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'config.json'))) as f:
-    C = json.load(f)['netberg']
+    C = json.load(f)['model']
 
 
 def get_dport_from_fport(fp, ch=0):

@@ -26,7 +26,7 @@
             "port": 4242
         }
     },
-    "netberg": {
+    "asic": {
         "workers": {
             "hpdc-gnode1": {
                 "port": 1,
