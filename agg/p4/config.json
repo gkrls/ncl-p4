@@ -41,14 +41,14 @@
                 "ip": "42.0.0.2"
             },
             "hpdc-gnode3": {
-                "port": 1,
-                "rank": 1,
+                "port": 3,
+                "rank": 3,
                 "mac": "94:6d:ae:8c:ad:74",
                 "ip": "42.0.0.1"
             },
             "hpdc-gnode4": {
-                "port": 2,
-                "rank": 2,
+                "port": 4,
+                "rank": 4,
                 "mac": "94:6d:ae:8c:e4:7c",
                 "ip": "42.0.0.2"
             }
