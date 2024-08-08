@@ -90,10 +90,13 @@ if opt.config:
     with open('config.json') as f:
         c = json.load(f)[c]
 
-    if opt.ip != c['workers'][w]['ip']:
-        print(
-            f"error: ip address {c['workers'][w]['ip']} from config.json not found in this server")
-        sys.exit(1)
+    if c == 'asic':
+        opt.ip = c['workers'][w]['ip']
+    else:
+        if opt.ip != c['workers'][w]['ip']:
+            print(
+                f"error: ip address {c['workers'][w]['ip']} from config.json not found in this server")
+            sys.exit(1)
     opt.workers = len(c['workers'])
     opt.rank = c['workers'][w]['rank']
     opt.port = c['udp-port-base']

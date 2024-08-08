@@ -2,12 +2,12 @@ BUILD := $(shell pwd)/build
 P4SRC := $(shell realpath "switch.p4")
 P4NAME:= switch
 
-ifndef SDE
-$(error SDE is undefined)
-endif
-ifndef SDE_INSTALL
-$(error SDE_INSTALL is undefined)
-endif
+# ifndef SDE
+# $(error SDE is undefined)
+# endif
+# ifndef SDE_INSTALL
+# $(error SDE_INSTALL is undefined)
+# endif
 
 switch-cli:
 	mx s1 SDE=${SDE} SDE_INSTALL=${SDE}/install ${SDE}/run_bfshell.sh
@@ -27,6 +27,23 @@ asic: asic-compile
 	tmux send-keys -t switch.0 '${SDE}/run_bfshell.sh -b ${PWD}/bfrt-cli-asic.py' C-m
 	tmux send-keys -t switch.1 'cd ${BUILD}/log && ${SDE}/run_switchd.sh -c ${BUILD}/${P4NAME}/${P4NAME}.conf ' C-m
 	tmux attach -t switch
+
+hpdc-servers-setup:
+	ssh hpdc-gnode1 sudo ip addr replace 42.0.0.1/24 dev ens4f0
+	ssh hpdc-gnode2 sudo ip addr replace 42.0.0.2/24 dev ens4f0
+	ssh hpdc-gnode3 sudo ip addr replace 42.0.0.3/24 dev ens4f0
+	ssh hpdc-gnode3 sudo ip addr replace 42.0.0.4/24 dev ens4f0
+
+	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
+	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
+	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
+	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
+
+hpdc-servers-start:
+	ssh hpdc-gnode1 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode1 --steps 4 --multiplier 16 --perf"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode2 --steps 4 --multiplier 16 --perf"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode3 --steps 4 --multiplier 16 --perf"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode4 --steps 4 --multiplier 16 --perf"
 
 asic-bfrt:
 	${SDE}/run_bfshell.sh -b ${PWD}/bfrt-cli-asic.py
