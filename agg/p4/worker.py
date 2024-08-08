@@ -86,11 +86,11 @@ opt.ip = get_first_ip()
 
 if opt.config:
     print(f"Using configuration {opt.config} from config.json")
-    c, w = opt.config.split(':')[0], opt.config.split(':')[1]
+    cfg, w = opt.config.split(':')[0], opt.config.split(':')[1]
     with open('config.json') as f:
-        c = json.load(f)[c]
+        c = json.load(f)[cfg]
 
-    if c == 'asic':
+    if cfg == 'asic':
         opt.ip = c['workers'][w]['ip']
     else:
         if opt.ip != c['workers'][w]['ip']:
