@@ -14,20 +14,55 @@
                 "ip": "42.0.0.2"
             }
         },
-        "jobs": {
-            "1": {
-                "workers": [
-                    "w1",
-                    "w2"
-                ],
-                "mgid": 2,
-                "device": {
-                    "name": "s1",
-                    "mac": "42: 42: 42: 42: 42: 01",
-                    "ip": "42.42.42.1"
-                }
-            }
+        "mgid": 2,
+        "udp-port-base": 4242,
+        "timeout": 2,
+        "threads": 2,
+        "burst": 1,
+        "device": {
+            "name": "s1",
+            "mac": "42:00:00:00:00:00",
+            "ip": "42.0.0.0",
+            "port": 4242
         }
     },
-    "netberg" : {}
+    "netberg": {
+        "workers": {
+            "hpdc-gnode1": {
+                "port": 1,
+                "rank": 1,
+                "mac": "10:70:fd:df:a5:aa",
+                "ip": "42.0.0.1"
+            },
+            "hpdc-gnode2": {
+                "port": 2,
+                "rank": 2,
+                "mac": "10:70:fd:df:a4:26",
+                "ip": "42.0.0.2"
+            },
+            "hpdc-gnode3": {
+                "port": 1,
+                "rank": 1,
+                "mac": "94:6d:ae:8c:ad:74",
+                "ip": "42.0.0.1"
+            },
+            "hpdc-gnode4": {
+                "port": 2,
+                "rank": 2,
+                "mac": "94:6d:ae:8c:e4:7c",
+                "ip": "42.0.0.2"
+            }
+        },
+        "mgid": 2,
+        "udp-port-base": 4242,
+        "timeout": 2,
+        "threads": 4,
+        "burst": 1,
+        "device": {
+            "name": "s1",
+            "mac": "42:00:00:00:00:00",
+            "ip": "42.0.0.0",
+            "port": 4242
+        }
+    }
 }

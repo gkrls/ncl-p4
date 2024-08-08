@@ -1,13 +1,14 @@
 from netaddr import IPAddress, EUI
 import json
+import os
 
-with open('config.json') as f:
-    C = json.load(f)
-    WORKERS = C['workers']
-    JOBS = C['jobs']
+with open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'config.json'))) as f:
+    C = json.load(f)['model']
+
 
 def get_dport_from_fport(fp, ch=0):
     return bfrt.port.port_hdl_info.get(CONN_ID=fp, CHNL_ID=ch, print_ents=False).data[b'$DEV_PORT']
+
 
 # clear multicast nodes/groups
 if bfrt.pre.node.info(return_info=True, print_info=False)['usage']:
@@ -60,31 +61,34 @@ IN.agg.Bitmap.clear()
 EG.allreduce_sender.clear()
 
 # Flooding
+all_ports = [get_dport_from_fport(C['workers'][w]['port']) for w in C['workers']]
+
 IN.net.forwarding_table.add_with_flood(dst_addr=EUI("ff:ff:ff:ff:ff:ff"))
 bfrt.pre.node.entry(MULTICAST_NODE_ID=1, MULTICAST_RID=1,
-                    MULTICAST_LAG_ID=[], DEV_PORT=worker_ports).push()
+                    MULTICAST_LAG_ID=[], DEV_PORT=all_ports).push()
 bfrt.pre.mgid.add(MGID=1, MULTICAST_NODE_ID=[1],
                   MULTICAST_NODE_L1_XID_VALID=[False], MULTICAST_NODE_L1_XID=[0])
 
 # Allreduce job 1
-IN.net.arp_table.add_with_arp_resolve(dst_proto_addr=IPAddress(JOBS['1']['ip']), mac=EUI(JOBS['1']['mac']))
-for w in WORKERS:
-    dport = get_dport_from_fport(WORKERS[w]['port'])
-    mac, ip = EUI(WORKERS[w]['mac']), IPAddress(WORKERS[w]['ip'])
+IN.net.arp_table.add_with_arp_resolve(
+    dst_proto_addr=IPAddress(C['device']['ip']), mac=EUI(C['device']['mac']))
+
+for w in C['workers']:
+    dport = get_dport_from_fport(C['workers'][w]['port'])
+    mask = 1 << (C['workers'][w]['rank'] - 1)
+    mac, ip = EUI(C['workers'][w]['mac']), IPAddress(C['workers'][w]['ip'])
     IN.net.forwarding_table.add_with_send_to_port(dst_addr=mac, port=dport)
-    EG.allreduce_sender.add_with_send_to_worker(egress_port=dport, mac=mac, ip=ip, mask=1 << (WORKERS[w]['rank'] - 1))
+    EG.allreduce_sender.add_with_send_to_worker(egress_port=dport, mac=mac, ip=ip, mask=mask)
     print('  %s/%s -> %d (%s)' % (mac, ip, dport, w))
 
-worker_ports = [get_dport_from_fport(w) for w in [int(w['port']) for w in WORKERS]] #range(1, NUM_WORKERS + 1)
-
-
 # Multicast group for allreduce
-bfrt.pre.node.entry(MULTICAST_NODE_ID=42, MULTICAST_RID=42,
+worker_ports = [get_dport_from_fport(C['workers'][w]['port']) for w in C['workers']]
+bfrt.pre.node.entry(MULTICAST_NODE_ID=C['mgid'], MULTICAST_RID=C['mgid'],
                     MULTICAST_LAG_ID=[], DEV_PORT=worker_ports).push()
-bfrt.pre.mgid.add(MGID=42, MULTICAST_NODE_ID=[42],
+bfrt.pre.mgid.add(MGID=C['mgid'], MULTICAST_NODE_ID=[C['mgid']],
                   MULTICAST_NODE_L1_XID_VALID=[False], MULTICAST_NODE_L1_XID=[0])
 
-print('  mgid %d -> %s' % (1, worker_ports))
-print('  mgid %d -> %s' % (42, worker_ports))
+print('  mgid %d -> %s' % (1, all_ports))
+print('  mgid %d -> %s' % (C['mgid'], worker_ports))
 
 bfrt.complete_operations()

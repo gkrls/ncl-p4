@@ -9,12 +9,8 @@ SDE = os.environ['SDE']
 SDE_INSTALL = os.path.join(SDE, 'install')
 
 with open('config.json') as f:
-    C = json.load(f)
-    WORKERS = C['model']['workers']
-    JOBS = C['model']['jobs']
-
-NUM_WORKERS = 2
-
+    C = json.load(f)['model']
+    # WORKERS = C['model']['workers']
 
 class T1Model:
     PIPES = 4
@@ -58,19 +54,18 @@ net = NetworkAPI()
 net.setLogLevel('info')
 net.enableCli()
 
-s = JOBS['1']['device']['name']
+s = C['device']['name']
 net.setCompiler(compilerClass=BF_P4C, sde=SDE, sde_install=SDE_INSTALL)
-net.addTofino(s, sde=SDE, sde_install=SDE_INSTALL,
-              mac=JOBS['1']['device']['mac'], ip=JOBS['1']['device']['ip'])
+net.addTofino(s, sde=SDE, sde_install=SDE_INSTALL, mac=C['device']['mac'], ip=C['device']['ip'])
 net.setP4Source(s, 'switch.p4')
 
-for w in WORKERS:
-    dport = T1Model.get_dport_from_fport(WORKERS[w]['port'], 0)
+for w in C['workers']:
+    dport = T1Model.get_dport_from_fport(C['workers'][w]['port'], 0)
     net.addHost(w)
     net.addLink(w, s, port2=dport)
     net.setIntfName(w, s, f"{w}-eth0")
-    net.setIntfMac(w, s, WORKERS[w]['mac'])
-    net.setIntfIp(w, s, ip=f"{WORKERS[w]['ip']}/24")
+    net.setIntfMac(w, s, C['workers'][w]['mac'])
+    net.setIntfIp(w, s, ip=f"{C['workers'][w]['ip']}/24")
 
 # for w in range(1, NUM_WORKERS + 1):
 #     dport = T1Model.get_dport_from_fport(w, 0)
