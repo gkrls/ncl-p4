@@ -56,7 +56,7 @@
         "mgid": 2,
         "udp-port-base": 4242,
         "timeout": 2,
-        "threads": 4,
+        "threads": 8,
         "burst": 1,
         "device": {
             "name": "s1",
