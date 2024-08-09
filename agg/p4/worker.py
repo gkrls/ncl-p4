@@ -4,10 +4,12 @@ import argparse
 import socket
 import random
 import threading
+import multiprocessing
 import json
 import os
 import sys
 import time
+import queue
 
 
 def get_first_ip(iface="eth0"):
@@ -56,6 +58,7 @@ parser.add_argument("-D", "--device", default=DEFAULT_DEVICE, metavar="mac|ip|po
                     help=f"Switch aggregator info (default={DEFAULT_DEVICE})")
 parser.add_argument("-P", "--port", default=DEFAULT_BASE_PORT, type=int,
                     help=f"Base UDP port for ML (default={DEFAULT_BASE_PORT})")
+
 parser.add_argument("-j", "--threads", default=1, type=int,
                     help="number of threads (default=1)")
 parser.add_argument("-w", "--window", default=1, type=int,
@@ -79,6 +82,8 @@ parser.add_argument("--perf", action="store_true",
                     help="run in performance mode")
 parser.add_argument("--config", metavar="config:worker", type=str,
                     help="override settings with configuration from config.json")
+parser.add_argument("--warmup", metavar="steps", type=int, default=0,
+                    help="number of warmup steps to perform (default=0)")
 
 
 opt = parser.parse_args()
@@ -103,9 +108,14 @@ if opt.config:
     opt.dev_mac = c['device']['mac']
     opt.dev_ip = c['device']['ip']
     opt.dev_port = c['device']['port']
-    opt.threads = c['threads']
-    opt.window = c['burst']
-    opt.timeout = c['timeout']
+
+    # Allow the command line to override the config on those 3
+    if "-j" not in sys.argv and "--threads" not in sys.argv:
+        opt.threads = c['threads']
+    if "-w" not in sys.argv and "--window" not in sys.argv:
+        opt.window = c['burst']
+    if "-t" not in sys.argv and "--timeout" not in sys.argv:
+        opt.timeout = c['timeout']
 else:
     opt.dev_mac = opt.device.split('|')[0] if opt.device.count(
         '|') else DEFAULT_DEVICE_MAC
@@ -116,7 +126,7 @@ else:
 
 opt.reducers = 32
 opt.values_per_packet = opt.reducers
-opt.size = opt.threads * opt.values_per_packet * opt.multiplier
+opt.size = opt.threads * opt.window * opt.values_per_packet * opt.multiplier
 opt.values_per_thread = opt.size // opt.threads
 opt.packets_per_thread = opt.size // opt.threads // opt.values_per_packet
 opt.slots = opt.threads * opt.window * opt.workers
@@ -142,6 +152,7 @@ class Agg(Packet):
         ShortField("agg_idx", 0),
         IntField("mask", 0),
         IntField("offset", 0),
+        IntField("expo", 0),
         FieldListField("vals", [], IntField("val", 0),
                        count_from=lambda p: opt.values_per_packet),
     ]
@@ -172,9 +183,9 @@ def unreliable_send_debug(tid, soc, addr, data, **kwargs):
     p = Agg(data)
     simulate_drop = random.randint(1, 100) < opt.drop_prob
     retransmission = 'is_retransmission' in kwargs and kwargs['is_retransmission']
-    pre = f"O{'.RE' if retransmission else ''}{'.INGRESS-DROP' if simulate_drop else ''}.<{p.offset},{p.bmp_idx},{p.ver}>"
+    pre = f"O{'.RE' if retransmission else ''}{'.INGRESS-DROP' if simulate_drop else ''}.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
     print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} ({len(data)}B)")
+          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
 
     return len(p) if simulate_drop else soc.sendto(data, addr)
 
@@ -183,9 +194,9 @@ def unreliable_recv_debug(tid, soc):
     data, addr = soc.recvfrom(1024)
     p = Agg(data)
     simulate_drop = random.randint(1, 100) < opt.drop_prob
-    pre = f"I{'.EGRESS-DROP' if simulate_drop else ''}.<{p.offset},{p.bmp_idx},{p.ver}>"
+    pre = f"I{'.EGRESS-DROP' if simulate_drop else ''}.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
     print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} ({len(data)}B)")
+          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
     if simulate_drop:
         raise socket.timeout
     return data, addr
@@ -193,9 +204,9 @@ def unreliable_recv_debug(tid, soc):
 
 def reliable_send_debug(tid, soc, addr, data, **kwargs):
     p = Agg(data)
-    pre = f"O.<{p.offset},{p.bmp_idx},{p.ver}>"
+    pre = f"O.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
     print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} ({len(data)}B)")
+          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
 
     return soc.sendto(data, addr)
 
@@ -203,9 +214,9 @@ def reliable_send_debug(tid, soc, addr, data, **kwargs):
 def reliable_recv_debug(tid, soc):
     data, addr = soc.recvfrom(1024)
     p = Agg(data)
-    pre = f"I.<{p.offset},{p.bmp_idx},{p.ver}>"
+    pre = f"I.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
     print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} ({len(data)}B)")
+          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
     return data, addr
 
 
@@ -217,25 +228,39 @@ def reliable_send(tid, soc, addr, data, **kwargs):
     return soc.sendto(data, addr)
 
 
-def expected_packet(tid, in_data, version, offset):
+def expected_packet(tid, in_data, offset):
     agg = Agg(in_data)
     if agg.offset != offset:
         print(thread(
             tid), f"I.<{agg.offset},{agg.bmp_idx},{agg.ver}> WRONG_OFFSET: expected {offset}")
-        return False
+        return False, agg.offset, agg.ver
+    # if agg.ver != version:
+    #     print(thread(
+    #         tid), f"I.<{agg.offset},{agg.bmp_idx},{agg.ver}> WRONG_VERSION: expected {version}")
+    #     return False, agg.ver, agg.offset
 
-    if agg.ver != version:
-        print(thread(
-            tid), f"I.<{agg.offset},{agg.bmp_idx},{agg.ver}> WRONG_VERSION: expected {version}")
-        return False
-
-    return True
+    return True, agg.offset, agg.ver
 
 
-def expected_packet_perf(tid, in_data, version, offset):
+def expected_packet_perf(tid, in_data, offset):
     got_version = in_data[0]
     got_offset = int.from_bytes(in_data[9:13], byteorder='big', signed=False)
-    return (got_version == version) and (got_offset == offset)
+    return (got_version == version) and (got_offset == offset), got_offset, got_version
+
+
+def get_packet_ver(in_data):
+    return in_data[0]
+
+
+def get_packet_offset(in_data):
+    return int.from_bytes(in_data[9:13], byteorder='big', signed=False)
+
+
+def get_packet_bmp_idx(in_data):
+    return int.from_bytes(in_data[1:3], byteorder='big', signed=False)
+
+# def get_packet_info(in_data):
+#     return int.from_bytes(in_data[9:13], byteorder='big', signed=False), in_data[0]
 
 
 SEND = reliable_send if opt.perf else (unreliable_send_debug if (
@@ -245,66 +270,135 @@ RECV = reliable_recv if opt.perf else (unreliable_recv_debug if (
 EXPECTED = expected_packet_perf if opt.perf else expected_packet
 
 # Keep track of the last version of the slots we used
-VERSION = [opt.starting_version] * opt.threads
-SOCKETS = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-           for _ in range(opt.threads)]
+# VERSION = [opt.starting_version] * opt.threads
+# SOCKETS = [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#            for _ in range(opt.threads)]
+# for i, soc in enumerate(SOCKETS):
+#     soc.bind((opt.ip, opt.port + i))
+# if opt.timeout > 0:
+#     soc.settimeout(opt.timeout)
 
-for i, soc in enumerate(SOCKETS):
-    soc.bind((opt.ip, opt.port + i))
-    if opt.timeout > 0:
-        soc.settimeout(opt.timeout)
 
-
-def socket_worker(opt, tid, soc, data):
-    global VERSION
-    device = (opt.dev_ip, opt.dev_port)
+def get_idx_range(opt, tid, maximum):
     start = tid * opt.values_per_thread
-    end = min(len(data), start + opt.values_per_thread)
+    return start,  min(maximum, start + opt.values_per_thread)
 
-    version = VERSION[tid]
-    slot = tid * opt.window
+# TODO: This worker assumes no packet loss!
+# When we involve retransmissions we need to be checking that the
+# incoming packet is the not stale, and ignore it otherwise
+# Also, we cannot rely on the socket timeout. We need to do what
+# SwitchML does and start opt.window timer threads. This is not
+# very easy in python
 
-    # print(thread(tid),
-    #       f"Starting slot: {slot}, Range: [{start}:{end}], Port: {port}")
 
-    for i in range(opt.packets_per_thread):
+VERSIONS = multiprocessing.Array('i', [opt.starting_version] * opt.threads)
+
+
+def socket_worker(opt, tid, data):
+    # global VERSION
+    # print(thread(tid), "STARTING VERSION: ", version.value)
+    soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    soc.bind((opt.ip, opt.port + tid))
+
+    device = (opt.dev_ip, opt.dev_port)
+    start, end = get_idx_range(opt, tid, len(data))
+
+    mask = 1 << (opt.rank - 1)
+    starting_ver = VERSIONS[tid]
+    starting_slot = tid * opt.window
+
+    # Just fix the value of the exponent for now. Normally,
+    # we would need to compute it based on per-packet values
+    expo = random.randint(1, 50) if opt.random else opt.rank
+
+    # create packets for burst
+    window = []
+    for i in range(opt.window):
         lo = start + i * opt.values_per_packet
         hi = lo + opt.values_per_packet
+        slot = starting_slot + i
+        window.append(Agg(ver=starting_ver, bmp_idx=slot, agg_idx=slot,
+                      mask=mask, offset=lo, expo=expo, vals=data[lo:hi]))
 
-        bmp_idx = slot
-        agg_idx = slot + version * opt.aggregators
+    # send burst
+    for p in window:
+        SEND(tid, soc, device, bytes(p))
 
-        p = Agg(ver=version, bmp_idx=bmp_idx, agg_idx=agg_idx, mask=1 << (opt.rank - 1),
-                offset=lo, vals=data[lo:hi])
+    received = 0
 
-        re = False
-        while True:
-            SEND(tid, soc, device, bytes(p), is_retransmission=re)
-            try:
-                in_data, _ = RECV(tid, soc)
-                # if not EXPECTED(tid, in_data, version, lo):
-                #     raise socket.timeout
-                while not EXPECTED(tid, in_data, version, lo):
-                    print("unexpected")
-                    in_data, _ = RECV(tid, soc)
-                break
-            except socket.timeout:
-                re = True
-                continue
+    while True:
+        in_data, _ = RECV(tid, soc)
 
-            # except Exception as e:
-            #     print(thread(tid), "in_data: ",
-            #           None if not in_data else ("\n" + hexdump(in_data)))
-            #     raise e
-        version = 1 - version
+        received += opt.values_per_packet
 
-    VERSION[tid] = version
+        in_ver = get_packet_ver(in_data)
+
+        if received >= opt.values_per_thread:
+            VERSIONS[tid] = 1 - in_ver
+            break
+
+        in_offset = get_packet_offset(in_data)
+
+        lo = in_offset + opt.window * opt.values_per_packet
+        if lo >= end:
+            # this is possible only if e.g. we receive packets
+            # with high idx within the window, before packets
+            # with lower idx, so the new offset we compute
+            # goes out of bounds on this threads idx range
+            continue
+
+        hi = lo + opt.values_per_packet
+        ver = 1 - in_ver
+        bmp_idx = get_packet_bmp_idx(in_data)
+        agg_idx = bmp_idx + ver * opt.slots
+
+        p = Agg(ver=ver, bmp_idx=bmp_idx, agg_idx=agg_idx,
+                mask=mask, offset=lo, expo=expo, vals=data[lo:hi])
+
+        SEND(tid, soc, device, bytes(p))
+
+    soc.close()
+
+    # for i in range(opt.packets_per_thread):
+    #     lo = start + i * opt.values_per_packet
+    #     hi = lo + opt.values_per_packet
+
+    #     bmp_idx = slot
+    #     agg_idx = slot + version * opt.aggregators
+
+    #     p = Agg(ver=version, bmp_idx=bmp_idx, agg_idx=agg_idx, mask=1 << (opt.rank - 1),
+    #             offset=lo, vals=data[lo:hi])
+
+    #     re = False
+    #     while True:
+    #         SEND(tid, soc, device, bytes(p), is_retransmission=re)
+    #         try:
+    #             in_data, _ = RECV(tid, soc)
+    #             # if not EXPECTED(tid, in_data, version, lo):
+    #             #     raise socket.timeout
+    #             while not EXPECTED(tid, in_data, version, lo):
+    #                 print("unexpected")
+    #                 in_data, _ = RECV(tid, soc)
+    #             break
+    #         except socket.timeout:
+    #             re = True
+    #             continue
+
+    #         # except Exception as e:
+    #         #     print(thread(tid), "in_data: ",
+    #         #           None if not in_data else ("\n" + hexdump(in_data)))
+    #         #     raise e
+    #     version = 1 - version
+
+    # VERSION[tid] = version
 
 
 print(worker(), "World: %d" % opt.workers, "| IP: %s" % get_first_ip(),
       "| Ports: %d-%d" % (opt.port, opt.port + opt.threads - 1), "| Threads: %d" % opt.threads)
-print(worker(), "Device: %s:%s | Reducers: %d" %
-      (opt.dev_ip, opt.dev_port, opt.reducers))
+print(worker(), "Device: %s:%s | Reducers: %d | Slots: %d" %
+      (opt.dev_ip, opt.dev_port, opt.reducers, opt.slots))
 print(worker(), "Packet loss simulation: %s" % (["None", "ingress", "egress", "ingress/egress"][opt.drop_mode]),
       ("%d%%" % opt.drop_prob) if opt.drop_mode > 0 else "")
 print(worker(), "Values: %d" % opt.size, "(x%d)," % opt.multiplier, "PerPkt: %d," % opt.values_per_packet,
@@ -313,33 +407,48 @@ print(worker())
 
 
 def AllReduce(opt, data):
-    threads = [threading.Thread(name="t%d" % tid, target=socket_worker, args=(opt, tid, SOCKETS[tid], data,))
-               for tid in range(opt.threads)]
+    threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
+        opt, pid, data)) for pid in range(opt.threads)]
+    # threads = [threading.Thread(name="t%d" % tid, target=socket_worker, args=(opt, tid, SOCKETS[tid], data,))
+    #            for tid in range(opt.threads)]
+
+    start = time.time()
     for t in threads:
         t.start()
     for t in threads:
         t.join()
+    return time.time() - start
 
 
 if __name__ == "__main__":
+    if opt.warmup:
+        # print(worker(), f"Running {opt.warmup} warmup step{'s' if opt.warmup > 1 else ''}...")
+        DATA = multiprocessing.Array('i', [random.randint(1, 50) for _ in range(
+            opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
+        for s in range(opt.warmup):
+            print(worker(), f"Running warmup step {s + 1}...")
+            AllReduce(opt, DATA)
+        print(worker())
+    print(worker(), f"Starting versions: {list(VERSIONS)}")
+
     avg_t = 0
     avg_r = 0
     for s in range(opt.steps):
-        data = ([random.randint(1, 50) for _ in range(opt.size)]) if opt.random \
-            else ([opt.rank] * opt.size)
+        # DATA = multiprocessing.Array('i', )
+        DATA = multiprocessing.Array('i', [random.randint(1, 50) for _ in range(
+            opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
 
         if not opt.perf:
-            print(worker(), "AllReduce #%d |" % (s + 1), head(data))
+            print(worker(), "AllReduce #%d |" % (s + 1), head(DATA))
             print(worker())
 
-        start = time.time()
-        AllReduce(opt, data)
-        t = time.time() - start
-        r = (len(data) * opt.workers) / t
+        t = AllReduce(opt, DATA)
+        r = (len(DATA) * opt.workers) / t
         avg_t += t
         avg_r += r
         print(worker(),
-              f"AllReduce {len(data) * 4}B: {int(t)}:{int((t % 1) * 1000)} seconds, {r:.2f} values/second")
+              f"AllReduce {len(DATA) * opt.workers}B: {int(t)}:{int((t % 1) * 1000)} seconds, {r:.2f} values/second")
+        print(worker(), "next versions:", list(VERSIONS))
     avg_t /= opt.steps
     avg_r /= opt.steps
     print(worker())

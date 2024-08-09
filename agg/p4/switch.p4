@@ -1,40 +1,91 @@
 #include <core.p4>
 #include <tna.p4>
 
-#include "config.p4"
-#include "types.p4"
-#include "parsers.p4"
+#include "switch_config.p4"
+#include "switch_types.p4"
+#include "switch_parsers.p4"
 
-control reducer(in bitmap_t bitmap_old, in bitmap_t bitmap_chk,
-                in slot_idx_t idx, inout value_t v) {
+control expo_reducer( in bitmap_t bitmap_old,
+                      in bitmap_t bitmap_chk,
+                      in slot_idx_t idx,
+                      inout expo_t expo)
+{
+  Register<expo_t, slot_idx_t>(ALLREDUCE_AGG_SLOTS) R;
 
+  RegisterAction<expo_t, slot_idx_t, expo_t>(R) write = {
+    void apply(inout expo_t reg, out expo_t ret) {
+      reg = expo;
+      ret = reg;
+    }
+  };
+
+  RegisterAction<expo_t, slot_idx_t, expo_t>(R) update = {
+    void apply(inout expo_t reg, out expo_t ret) {
+      reg = max(reg, expo);
+      ret = reg;
+    }
+  };
+
+  RegisterAction<expo_t, slot_idx_t, expo_t>(R) read = {
+    void apply(inout expo_t reg, out expo_t ret) {
+      ret = reg;
+    }
+  };
+
+  action update_register() { expo = update.execute(idx); }
+
+  action read_register() { expo = read.execute(idx); }
+
+  action write_register() { expo = write.execute(idx); }
+
+  table reduce {
+    key = {bitmap_old: ternary; bitmap_chk: ternary;}
+    actions = {update_register; read_register; write_register; }
+    const size = 32;
+    const entries = {
+      (0, 0) : write_register();
+      (_, 0) : update_register();
+      (_, _) : read_register();
+    }
+  }
+
+  apply {
+    reduce.apply();
+  }
+}
+
+control reducer(in bitmap_t bitmap_old,
+                in bitmap_t bitmap_chk,
+                in slot_idx_t idx,
+                inout value_t v)
+{
   Register<value_t, slot_idx_t>(ALLREDUCE_AGG_SLOTS) R;
 
-  RegisterAction<value_t, slot_idx_t, value_t>(R) add = {
+  RegisterAction<value_t, slot_idx_t, value_t>(R) update = {
     void apply(inout value_t reg, out value_t ret) {
       reg = reg + v;
       ret = reg;
     }
   };
 
-  RegisterAction<value_t, slot_idx_t, value_t>(R) get = {
+  RegisterAction<value_t, slot_idx_t, value_t>(R) read = {
     void apply(inout value_t reg, out value_t ret) {
       ret = reg;
     }
   };
 
-  RegisterAction<value_t, slot_idx_t, value_t>(R) set = {
+  RegisterAction<value_t, slot_idx_t, value_t>(R) write = {
     void apply(inout value_t reg, out value_t ret) {
       reg = v;
       ret = reg;
     }
   };
 
-  action update_register() { v = add.execute(idx); }
+  action update_register() { v = update.execute(idx); }
 
-  action read_register() { v = get.execute(idx); }
+  action read_register() { v = read.execute(idx); }
 
-  action write_register() { v = set.execute(idx); }
+  action write_register() { v = write.execute(idx); }
 
   table reduce {
     key = {bitmap_old: ternary; bitmap_chk: ternary;}
@@ -50,11 +101,13 @@ control reducer(in bitmap_t bitmap_old, in bitmap_t bitmap_chk,
   apply { reduce.apply(); }
 }
 
-control allreduce ( inout headers_t H, inout ingress_metadata_t M,
+control allreduce ( inout headers_t H,
+                    inout ingress_metadata_t M,
                     in ingress_intrinsic_metadata_t IM,
                     in ingress_intrinsic_metadata_from_parser_t PIM,
                     inout ingress_intrinsic_metadata_for_deparser_t DIM,
-                    inout ingress_intrinsic_metadata_for_tm_t TIM ) {
+                    inout ingress_intrinsic_metadata_for_tm_t TIM )
+{
 
   bitmap_t bitmap_old;
   bitmap_t bitmap_chk;
@@ -124,6 +177,7 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
     }
   }
 
+  expo_reducer() RExpo;
   reducer() R00;
   reducer() R01;
   reducer() R02;
@@ -194,38 +248,40 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
 
     count.apply();
 
-    R00.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v00);
-    R01.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v01);
-    R02.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v02);
-    R03.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v03);
-    R04.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v04);
-    R05.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v05);
-    R06.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v06);
-    R07.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v07);
-    R08.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v08);
-    R09.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v09);
-    R10.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v10);
-    R11.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v11);
-    R12.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v12);
-    R13.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v13);
-    R14.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v14);
-    R15.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v15);
-    R16.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v16);
-    R17.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v17);
-    R18.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v18);
-    R19.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v19);
-    R20.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v20);
-    R21.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v21);
-    R22.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v22);
-    R23.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v23);
-    R24.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v24);
-    R25.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v25);
-    R26.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v26);
-    R27.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v27);
-    R28.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v28);
-    R29.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v29);
-    R30.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v30);
-    R31.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_vals.v31);
+    RExpo.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.expo);
+
+    R00.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v00);
+    R01.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v01);
+    R02.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v02);
+    R03.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v03);
+    R04.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v04);
+    R05.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v05);
+    R06.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v06);
+    R07.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v07);
+    R08.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v08);
+    R09.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v09);
+    R10.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v10);
+    R11.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v11);
+    R12.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v12);
+    R13.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v13);
+    R14.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v14);
+    R15.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v15);
+    R16.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v16);
+    R17.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v17);
+    R18.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v18);
+    R19.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v19);
+    R20.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v20);
+    R21.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v21);
+    R22.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v22);
+    R23.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v23);
+    R24.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v24);
+    R25.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v25);
+    R26.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v26);
+    R27.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v27);
+    R28.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v28);
+    R29.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v29);
+    R30.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v30);
+    R31.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v31);
 
     next.apply();
   }
@@ -234,12 +290,13 @@ control allreduce ( inout headers_t H, inout ingress_metadata_t M,
 
 
 
-control networking( inout headers_t H, inout ingress_metadata_t M,
+control networking( inout headers_t H,
+                    inout ingress_metadata_t M,
                     in ingress_intrinsic_metadata_t IM,
                     in ingress_intrinsic_metadata_from_parser_t PIM,
                     inout ingress_intrinsic_metadata_for_deparser_t DIM,
-                    inout ingress_intrinsic_metadata_for_tm_t TIM ) {
-
+                    inout ingress_intrinsic_metadata_for_tm_t TIM )
+{
   action send_to_port(PortId_t port) {
     DIM.drop_ctl[0:0] = 0x0;
     TIM.ucast_egress_port = port;
@@ -284,11 +341,13 @@ control networking( inout headers_t H, inout ingress_metadata_t M,
   }
 }
 
-control ingress( inout headers_t H, inout ingress_metadata_t M,
+control ingress( inout headers_t H,
+                 inout ingress_metadata_t M,
                  in ingress_intrinsic_metadata_t IM,
                  in ingress_intrinsic_metadata_from_parser_t PIM,
                  inout ingress_intrinsic_metadata_for_deparser_t DIM,
-                 inout ingress_intrinsic_metadata_for_tm_t TIM ) {
+                 inout ingress_intrinsic_metadata_for_tm_t TIM)
+{
 
   allreduce() agg;
   networking() net;
@@ -302,11 +361,13 @@ control ingress( inout headers_t H, inout ingress_metadata_t M,
   }
 }
 
-control egress( inout headers_t H, inout egress_metadata_t M,
+control egress( inout headers_t H,
+                inout egress_metadata_t M,
                 in egress_intrinsic_metadata_t IM,
                 in egress_intrinsic_metadata_from_parser_t PIM,
                 inout egress_intrinsic_metadata_for_deparser_t DIM,
-                inout egress_intrinsic_metadata_for_output_port_t OPIM ) {
+                inout egress_intrinsic_metadata_for_output_port_t OPIM )
+{
 
   action send_to_worker(mac_addr_t mac, ip4_addr_t ip, bitmap_t mask) {
     H.eth.src_addr = H.eth.dst_addr;

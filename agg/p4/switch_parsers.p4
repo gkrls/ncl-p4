@@ -1,11 +1,13 @@
 #ifndef PARSERS_P4
 #define PARSERS_P4
 
-#include "types.p4"
+#include "switch_types.p4"
 
-parser ingress_parser( packet_in P, out headers_t H,
-                       out ingress_metadata_t M,
-                       out ingress_intrinsic_metadata_t IM) {
+parser ingress_parser(packet_in P,
+                      out headers_t H,
+                      out ingress_metadata_t M,
+                      out ingress_intrinsic_metadata_t IM)
+{
   state start {
     P.extract(IM);
     P.advance(PORT_METADATA_SIZE);
@@ -52,14 +54,16 @@ parser ingress_parser( packet_in P, out headers_t H,
 
   state parse_agg {
     P.extract(H.agg);
-    P.extract(H.agg_vals);
+    P.extract(H.agg_data);
     transition accept;
   }
 }
 
-control ingress_deparser( packet_out P, inout headers_t H,
+control ingress_deparser( packet_out P,
+                          inout headers_t H,
                           in ingress_metadata_t M,
-                          in ingress_intrinsic_metadata_for_deparser_t DIM) {
+                          in ingress_intrinsic_metadata_for_deparser_t DIM)
+{
   apply {
     P.emit(H);
   }
@@ -67,7 +71,8 @@ control ingress_deparser( packet_out P, inout headers_t H,
 
 parser egress_parser( packet_in P, out headers_t H,
                       out egress_metadata_t M,
-                      out egress_intrinsic_metadata_t IM) {
+                      out egress_intrinsic_metadata_t IM)
+{
   state start {
     P.extract(IM);
     transition parse_ethernet;
@@ -103,9 +108,11 @@ parser egress_parser( packet_in P, out headers_t H,
   }
 }
 
-control egress_deparser( packet_out P, inout headers_t H,
-                         in egress_metadata_t M,
-                         in egress_intrinsic_metadata_for_deparser_t DIM) {
+control egress_deparser(packet_out P,
+                        inout headers_t H,
+                        in egress_metadata_t M,
+                        in egress_intrinsic_metadata_for_deparser_t DIM)
+{
 
   Checksum() ip4_checksum;
 

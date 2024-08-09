@@ -93,6 +93,7 @@ typedef bit<32> bitmap_t;
 typedef bit<32> offset_t;
 typedef bit<16> count_t;
 typedef bit<(ALLREDUCE_VALUE_BYTES * 8)> value_t;
+typedef bit<(ALLREDUCE_EXPONENT_BYTES * 8)> expo_t;
 
 struct pair<T> { T hi; T lo; }
 
@@ -104,7 +105,8 @@ header agg_h {
   offset_t offset;
 }
 
-header agg_values_h {
+header agg_data_h {
+  expo_t expo;
   value_t v00;
   value_t v01;
   value_t v02;
@@ -146,7 +148,7 @@ struct headers_t {
   ip4_h      ip4;
   udp_h      udp;
   agg_h      agg;
-  agg_values_h agg_vals;
+  agg_data_h agg_data;
 }
 
 struct ingress_metadata_t { }
