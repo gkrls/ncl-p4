@@ -10,6 +10,9 @@ import os
 import sys
 import time
 import queue
+import ctypes
+import numpy as np
+import struct
 
 
 def get_first_ip(iface="eth0"):
@@ -84,7 +87,8 @@ parser.add_argument("--config", metavar="config:worker", type=str,
                     help="override settings with configuration from config.json")
 parser.add_argument("--warmup", metavar="steps", type=int, default=0,
                     help="number of warmup steps to perform (default=0)")
-
+parser.add_argument("--profile", metavar="steps", type=int, default=0,
+                    help="number of profile steps to perform (default=0)")
 
 opt = parser.parse_args()
 opt.ip = get_first_ip()
@@ -210,6 +214,8 @@ def reliable_send_debug(tid, soc, addr, data, **kwargs):
 
     return soc.sendto(data, addr)
 
+def reliable_send(tid, soc, addr, data, **kwargs):
+    return soc.sendto(data, addr)
 
 def reliable_recv_debug(tid, soc):
     data, addr = soc.recvfrom(1024)
@@ -219,13 +225,20 @@ def reliable_recv_debug(tid, soc):
           f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
     return data, addr
 
-
 def reliable_recv(tid, soc):
     return soc.recvfrom(1024)
 
+def reliable_recv_into_debug(tid, soc, buffer):
+    sz, addr = soc.recvfrom_into(buffer, 1024)
+    p = Agg(buffer)
+    pre = f"I.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
+    print(thread(tid),
+          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({sz}B)")
+    return sz, addr
 
-def reliable_send(tid, soc, addr, data, **kwargs):
-    return soc.sendto(data, addr)
+def reliable_recv_into(tid, soc, buffer):
+    return soc.recvfrom_into(buffer, 1024)
+
 
 
 def expected_packet(tid, in_data, offset):
@@ -248,26 +261,24 @@ def expected_packet_perf(tid, in_data, offset):
     return (got_version == version) and (got_offset == offset), got_offset, got_version
 
 
-def get_packet_ver(in_data):
-    return in_data[0]
+# def get_packet_ver(in_data):
+#     return in_data[0]
 
 
-def get_packet_offset(in_data):
-    return int.from_bytes(in_data[9:13], byteorder='big', signed=False)
+# def get_packet_offset(in_data):
+#     return int.from_bytes(in_data[9:13], byteorder='big', signed=False)
 
 
-def get_packet_bmp_idx(in_data):
-    return int.from_bytes(in_data[1:3], byteorder='big', signed=False)
+# def get_packet_bmp_idx(in_data):
+#     return int.from_bytes(in_data[1:3], byteorder='big', signed=False)
 
 # def get_packet_info(in_data):
 #     return int.from_bytes(in_data[9:13], byteorder='big', signed=False), in_data[0]
 
+def get_idx_range(opt, tid, maximum):
+    start = tid * opt.values_per_thread
+    return start,  min(maximum, start + opt.values_per_thread)
 
-SEND = reliable_send if opt.perf else (unreliable_send_debug if (
-    opt.drop_mode in [1, 3]) else reliable_send_debug)
-RECV = reliable_recv if opt.perf else (unreliable_recv_debug if (
-    opt.drop_mode in [2, 3]) else reliable_recv_debug)
-EXPECTED = expected_packet_perf if opt.perf else expected_packet
 
 # Keep track of the last version of the slots we used
 # VERSION = [opt.starting_version] * opt.threads
@@ -279,9 +290,6 @@ EXPECTED = expected_packet_perf if opt.perf else expected_packet
 #     soc.settimeout(opt.timeout)
 
 
-def get_idx_range(opt, tid, maximum):
-    start = tid * opt.values_per_thread
-    return start,  min(maximum, start + opt.values_per_thread)
 
 # TODO: This worker assumes no packet loss!
 # When we involve retransmissions we need to be checking that the
@@ -291,8 +299,56 @@ def get_idx_range(opt, tid, maximum):
 # very easy in python
 
 
-VERSIONS = multiprocessing.Array('i', [opt.starting_version] * opt.threads)
+SEND = reliable_send if opt.perf else (unreliable_send_debug if (
+    opt.drop_mode in [1, 3]) else reliable_send_debug)
+RECV = reliable_recv if opt.perf else (unreliable_recv_debug if (
+    opt.drop_mode in [2, 3]) else reliable_recv_debug)
 
+RECV_INTO = reliable_recv_into if opt.perf else reliable_recv_into_debug
+
+EXPECTED = expected_packet_perf if opt.perf else expected_packet
+
+VERSIONS = multiprocessing.Array(
+    ctypes.c_uint8, [opt.starting_version] * opt.threads, lock=False)
+
+AGG_HEADER_SIZE = 1 + 2 + 2 + 4 + 4 + 4
+AGG_VALUES_SIZE = opt.values_per_packet * 4
+AGG_HEADER_FRMT = '!BHHIII' # Format: unsigned char (1 byte), two unsigned shorts (2 bytes each), three unsigned ints (4 bytes each)
+AGG_VALUES_FRMT = '!' + 'I' * opt.values_per_packet
+
+def create_packet(buffer, ver, bmp_idx, agg_idx, mask, offset, expo, vals):
+    """
+    Pack the header and values into the buffer.
+
+    :param buffer: The buffer to pack data into.
+    :param ver: Version byte.
+    :param bmp_idx: Bitmap index (short).
+    :param agg_idx: Aggregation index (short).
+    :param mask: Mask value (int).
+    :param offset: Offset value (int).
+    :param expo: Exponent value (int).
+    :param vals: List of values (list of ints).
+    :return: The buffer with packed data.
+    """
+    struct.pack_into(AGG_HEADER_FRMT, buffer, 0, ver, bmp_idx, agg_idx, mask, offset, expo)
+    values_offset = AGG_HEADER_SIZE
+    struct.pack_into(AGG_VALUES_FRMT, buffer, values_offset, *vals)
+    return buffer
+
+def read_packet(buffer):
+    ver, bmp_idx, agg_idx, mask, offset, expo = struct.unpack_from(AGG_HEADER_FRMT, buffer, 0)
+    values_offset = AGG_HEADER_SIZE
+    vals = struct.unpack_from(AGG_VALUES_FRMT, buffer, values_offset)
+    return ver, bmp_idx, agg_idx, mask, offset, expo, vals
+
+def read_packet_ver(buffer):
+    return buffer[0]
+
+def read_packet_bmp_idx(buffer):
+    return int.from_bytes(buffer[1:3], byteorder='big', signed=False)
+
+def read_packet_offset(buffer):
+    return int.from_bytes(buffer[9:13], byteorder='big', signed=False)
 
 def socket_worker(opt, tid, data):
     # global VERSION
@@ -314,32 +370,56 @@ def socket_worker(opt, tid, data):
     expo = random.randint(1, 50) if opt.random else opt.rank
 
     # create packets for burst
-    window = []
+    base_packet = Agg(mask=mask, expo=expo)
+
+    window = [bytearray(1024) for _ in range(opt.window)]
+    # p = bytearray(1024)
+
     for i in range(opt.window):
         lo = start + i * opt.values_per_packet
         hi = lo + opt.values_per_packet
         slot = starting_slot + i
-        window.append(Agg(ver=starting_ver, bmp_idx=slot, agg_idx=slot,
-                      mask=mask, offset=lo, expo=expo, vals=data[lo:hi]))
 
-    # send burst
+        create_packet(window[i], starting_ver, slot, slot, mask, lo, expo, list(data[lo:hi]))
+
+        # window.append(Agg(ver=starting_ver, bmp_idx=slot, agg_idx=slot,
+        #               mask=mask, offset=lo, expo=expo, vals=list(data[lo:hi])))
+
+
+        # p = base_packet.copy()
+        # p.ver = starting_ver
+        # p.bmp_idx = slot
+        # p.agg_idx = slot
+        # p.mask = mask
+        # p.offset = lo
+        # p.data = list(data[lo:hi])
+        # SEND(tid, soc, device, bytes(p))
+
+    # #send burst
     for p in window:
-        SEND(tid, soc, device, bytes(p))
+        SEND(tid, soc, device, p)
 
+    p = window[0]
     received = 0
 
     while True:
-        in_data, _ = RECV(tid, soc)
+        # in_data, _ = RECV(tid, soc)
+        RECV_INTO(tid, soc, p)
 
         received += opt.values_per_packet
 
-        in_ver = get_packet_ver(in_data)
+        in_ver = read_packet_ver(p)
+        in_offset = read_packet_offset(p)
+        in_bmp_idx = read_packet_bmp_idx(p)
+        # in_ver, in_bmp_idx, in_agg_idx, in_mask, in_offset, in_expo, in_vals = read_packet(p)
+
+        # in_ver = get_packet_ver(in_data)
 
         if received >= opt.values_per_thread:
             VERSIONS[tid] = 1 - in_ver
             break
 
-        in_offset = get_packet_offset(in_data)
+        # in_offset = get_packet_offset(in_data)
 
         lo = in_offset + opt.window * opt.values_per_packet
         if lo >= end:
@@ -351,13 +431,22 @@ def socket_worker(opt, tid, data):
 
         hi = lo + opt.values_per_packet
         ver = 1 - in_ver
-        bmp_idx = get_packet_bmp_idx(in_data)
+        bmp_idx = in_bmp_idx
         agg_idx = bmp_idx + ver * opt.slots
 
-        p = Agg(ver=ver, bmp_idx=bmp_idx, agg_idx=agg_idx,
-                mask=mask, offset=lo, expo=expo, vals=data[lo:hi])
+        create_packet(p, ver, bmp_idx, agg_idx, mask, lo, expo, list(data[lo:hi]))
 
-        SEND(tid, soc, device, bytes(p))
+        # p = base_packet.copy()
+        # p.ver = ver
+        # p.bmp_idx = bmp_idx
+        # p.agg_idx = agg_idx
+        # p.offset = lo
+        # p.expo = expo
+        # p.data = list(data[lo:hi])
+        # p = Agg(ver=ver, bmp_idx=bmp_idx, agg_idx=agg_idx,
+        #         mask=mask, offset=lo, expo=expo, vals=data[lo:hi])
+
+        SEND(tid, soc, device, p)
 
     soc.close()
 
@@ -407,8 +496,7 @@ print(worker())
 
 
 def AllReduce(opt, data):
-    threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
-        opt, pid, data)) for pid in range(opt.threads)]
+    threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(opt, pid, data)) for pid in range(opt.threads)]
     # threads = [threading.Thread(name="t%d" % tid, target=socket_worker, args=(opt, tid, SOCKETS[tid], data,))
     #            for tid in range(opt.threads)]
 
@@ -422,23 +510,27 @@ def AllReduce(opt, data):
 
 if __name__ == "__main__":
     if opt.warmup:
-        # print(worker(), f"Running {opt.warmup} warmup step{'s' if opt.warmup > 1 else ''}...")
-        DATA = multiprocessing.Array('i', [random.randint(1, 50) for _ in range(
+        DATA = multiprocessing.Array(ctypes.c_uint32, [random.randint(1, 50) for _ in range(
             opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
+
         for s in range(opt.warmup):
             print(worker(), f"Running warmup step {s + 1}...")
             AllReduce(opt, DATA)
         print(worker())
     print(worker(), f"Starting versions: {list(VERSIONS)}")
 
+
     avg_t = 0
     avg_r = 0
     for s in range(opt.steps):
-        # DATA = multiprocessing.Array('i', )
-        DATA = multiprocessing.Array('i', [random.randint(1, 50) for _ in range(
-            opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
+        # DATA = multiprocessing.Array(ctypes.c_uint32, [random.randint(1, 50) for _ in range(
+        #     opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
+
+        DATA = np.random.randint(
+            1, 50, size=opt.size) if opt.random else np.full(opt.size, opt.rank)
 
         if not opt.perf:
+            print(worker())
             print(worker(), "AllReduce #%d |" % (s + 1), head(DATA))
             print(worker())
 
@@ -447,13 +539,13 @@ if __name__ == "__main__":
         avg_t += t
         avg_r += r
         print(worker(),
-              f"AllReduce {len(DATA) * opt.workers}B: {int(t)}:{int((t % 1) * 1000)} seconds, {r:.2f} values/second")
-        print(worker(), "next versions:", list(VERSIONS))
+            f"AllReduce {len(DATA) * opt.workers} | ({len(DATA)}/{len(DATA) * 4}B per worker) : {int(t)}:{int((t % 1) * 1000):03d} seconds, {r:.2f} values/second")
+        # print(worker(), "next versions:", list(VERSIONS))
     avg_t /= opt.steps
     avg_r /= opt.steps
     print(worker())
     print(worker(),
-          f"Average time over {opt.steps} runs: {int(avg_t)}:{int((avg_t % 1) * 1000):03d} seconds")
+        f"Average time over {opt.steps} runs: {int(avg_t)}:{int((avg_t % 1) * 1000):03d} seconds")
     print(worker())
     print(worker(),
-          f"Average aggregation throughput {avg_r:.2f} values/s")
+        f"Average aggregation throughput {avg_r:.2f} values/s")
