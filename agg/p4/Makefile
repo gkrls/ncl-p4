@@ -34,6 +34,12 @@ hpdc-servers-setup-ips:
 	ssh hpdc-gnode3 sudo ip addr replace 42.0.0.3/24 dev ens4f0
 	ssh hpdc-gnode4 sudo ip addr replace 42.0.0.4/24 dev ens4f0
 
+hpdc-servers-setup-pull:
+	ssh hpdc-gnode1 "cd ncl-p4 && git pull"
+	ssh hpdc-gnode2 "cd ncl-p4 && git pull"
+	ssh hpdc-gnode3 "cd ncl-p4 && git pull"
+	ssh hpdc-gnode4 "cd ncl-p4 && git pull"
+
 hpdc-servers-setup: hpdc-servers-setup-ips
 	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
 	ssh hpdc-gnode2 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"

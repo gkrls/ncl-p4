@@ -373,27 +373,13 @@ def socket_worker(opt, tid, data):
     base_packet = Agg(mask=mask, expo=expo)
 
     window = [bytearray(1024) for _ in range(opt.window)]
-    # p = bytearray(1024)
 
     for i in range(opt.window):
         lo = start + i * opt.values_per_packet
         hi = lo + opt.values_per_packet
-        slot = starting_slot + i
-
-        create_packet(window[i], starting_ver, slot, slot, mask, lo, expo, list(data[lo:hi]))
-
-        # window.append(Agg(ver=starting_ver, bmp_idx=slot, agg_idx=slot,
-        #               mask=mask, offset=lo, expo=expo, vals=list(data[lo:hi])))
-
-
-        # p = base_packet.copy()
-        # p.ver = starting_ver
-        # p.bmp_idx = slot
-        # p.agg_idx = slot
-        # p.mask = mask
-        # p.offset = lo
-        # p.data = list(data[lo:hi])
-        # SEND(tid, soc, device, bytes(p))
+        bmp_idx = starting_slot + i
+        agg_idx = bmp_idx + starting_ver * opt.slots
+        create_packet(window[i], starting_ver, bmp_idx, agg_idx, mask, lo, expo, list(data[lo:hi]))
 
     # #send burst
     for p in window:
@@ -413,13 +399,9 @@ def socket_worker(opt, tid, data):
         in_bmp_idx = read_packet_bmp_idx(p)
         # in_ver, in_bmp_idx, in_agg_idx, in_mask, in_offset, in_expo, in_vals = read_packet(p)
 
-        # in_ver = get_packet_ver(in_data)
-
         if received >= opt.values_per_thread:
             VERSIONS[tid] = 1 - in_ver
             break
-
-        # in_offset = get_packet_offset(in_data)
 
         lo = in_offset + opt.window * opt.values_per_packet
         if lo >= end:
@@ -435,54 +417,9 @@ def socket_worker(opt, tid, data):
         agg_idx = bmp_idx + ver * opt.slots
 
         create_packet(p, ver, bmp_idx, agg_idx, mask, lo, expo, list(data[lo:hi]))
-
-        # p = base_packet.copy()
-        # p.ver = ver
-        # p.bmp_idx = bmp_idx
-        # p.agg_idx = agg_idx
-        # p.offset = lo
-        # p.expo = expo
-        # p.data = list(data[lo:hi])
-        # p = Agg(ver=ver, bmp_idx=bmp_idx, agg_idx=agg_idx,
-        #         mask=mask, offset=lo, expo=expo, vals=data[lo:hi])
-
         SEND(tid, soc, device, p)
 
     soc.close()
-
-    # for i in range(opt.packets_per_thread):
-    #     lo = start + i * opt.values_per_packet
-    #     hi = lo + opt.values_per_packet
-
-    #     bmp_idx = slot
-    #     agg_idx = slot + version * opt.aggregators
-
-    #     p = Agg(ver=version, bmp_idx=bmp_idx, agg_idx=agg_idx, mask=1 << (opt.rank - 1),
-    #             offset=lo, vals=data[lo:hi])
-
-    #     re = False
-    #     while True:
-    #         SEND(tid, soc, device, bytes(p), is_retransmission=re)
-    #         try:
-    #             in_data, _ = RECV(tid, soc)
-    #             # if not EXPECTED(tid, in_data, version, lo):
-    #             #     raise socket.timeout
-    #             while not EXPECTED(tid, in_data, version, lo):
-    #                 print("unexpected")
-    #                 in_data, _ = RECV(tid, soc)
-    #             break
-    #         except socket.timeout:
-    #             re = True
-    #             continue
-
-    #         # except Exception as e:
-    #         #     print(thread(tid), "in_data: ",
-    #         #           None if not in_data else ("\n" + hexdump(in_data)))
-    #         #     raise e
-    #     version = 1 - version
-
-    # VERSION[tid] = version
-
 
 print(worker(), "World: %d" % opt.workers, "| IP: %s" % get_first_ip(),
       "| Ports: %d-%d" % (opt.port, opt.port + opt.threads - 1), "| Threads: %d" % opt.threads)
