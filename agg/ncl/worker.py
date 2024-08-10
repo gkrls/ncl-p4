@@ -373,7 +373,7 @@ def read_packet_agg_offset(buffer):
 
 def socket_worker(opt, tid, data):
 
-    os.sched_setaffinity(os.getpid(), {os.getpid() % 24})
+    # os.sched_setaffinity(os.getpid(), {os.getpid() % 24})ss
 
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -396,7 +396,7 @@ def socket_worker(opt, tid, data):
     # create packets for burst
     # base_packet = Agg(mask=mask, expo=expo)
 
-    window = [bytearray(PACKET_SIZE) for _ in range(opt.window)]
+    window = [bytearray(PACKET_SIZE) for _ in range(max(opt.window, 2))]
 
     # window = []
     for i in range(opt.window):
@@ -415,15 +415,18 @@ def socket_worker(opt, tid, data):
 
     # #send burst
     for p in window:
-        SEND(tid, soc, device, p)
+        soc.sendto(p, device)
+        # SEND(tid, soc, device, p)
 
-    out_p = window[0]
-    in_p = bytearray(PACKET_SIZE)
+    out_p = window[0], in_p = window[1]
+    # in_p = bytearray(PACKET_SIZE)
 
     received = 0
+    offset_by = opt.window * opt.values_per_packet
 
     while True:
-        RECV_INTO(tid, soc, in_p)
+        # RECV_INTO(tid, soc, in_p)
+        soc.recv_into(in_p, PACKET_SIZE)
 
         received += opt.values_per_packet
 
@@ -435,7 +438,7 @@ def socket_worker(opt, tid, data):
             VERSIONS[tid] = 1 - in_ver
             break
 
-        lo = in_offset + opt.window * opt.values_per_packet
+        lo = in_offset + offset_by
         if lo >= end:
             # this is possible only if e.g. we receive packets
             # with high idx within the window, before packets
@@ -450,7 +453,8 @@ def socket_worker(opt, tid, data):
 
         # create_ncp(p, opt.rank, 0, 0, 1, 1, 0, 0)
         create_agg(out_p, ver, bmp_idx, agg_idx, mask, lo, expo, data[lo:hi])
-        SEND(tid, soc, device, out_p)
+        # SEND(tid, soc, device, out_p)
+        soc.sendto(out_p, device)
 
     soc.close()
 
