@@ -1,0 +1,52 @@
+{
+  "__meta__": {
+    "compiler": {
+      "build": "Debug",
+      "commit": "4f40c5e",
+      "version": "0.1.0"
+    },
+    "sources": [
+      ""
+    ]
+  },
+  "compute": {
+    "1": {
+      "kernel": {
+        "demangled": "allreduce(unsigned char, unsigned short, unsigned short, unsigned int, unsigned int, unsigned int&, unsigned int*)",
+        "mangled": "_Z9allreducehttjjRjPj"
+      },
+      "spec": {
+        "bytes": [
+          1,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4
+        ],
+        "counts": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          32
+        ],
+        "names": [
+          "ver",
+          "bmp_idx",
+          "agg_idx",
+          "mask",
+          "offset",
+          "expo",
+          "values"
+        ]
+      }
+    }
+  },
+  "memory": {
+    "managed": null
+  }
+}

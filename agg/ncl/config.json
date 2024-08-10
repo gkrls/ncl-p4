@@ -1,0 +1,71 @@
+{
+  "model": {
+      "workers": {
+          "w1": {
+              "port": 1,
+              "rank": 1,
+              "mac": "42:00:00:00:00:01",
+              "ip": "42.0.0.1"
+          },
+          "w2": {
+              "port": 2,
+              "rank": 2,
+              "mac": "42:00:00:00:00:02",
+              "ip": "42.0.0.2"
+          }
+      },
+      "active-workers": 2,
+      "mgid": 2,
+      "udp-port-base": 4242,
+      "timeout": 2,
+      "threads": 2,
+      "burst": 1,
+      "device": {
+          "id": 1,
+          "name": "s1",
+          "mac": "42:00:00:00:00:00",
+          "ip": "42.0.0.0",
+          "port": 4242
+      }
+  },
+  "asic": {
+      "workers": {
+          "hpdc-gnode1": {
+              "port": 1,
+              "rank": 1,
+              "mac": "10:70:fd:df:a5:aa",
+              "ip": "42.0.0.1"
+          },
+          "hpdc-gnode2": {
+              "port": 2,
+              "rank": 2,
+              "mac": "10:70:fd:df:a4:26",
+              "ip": "42.0.0.2"
+          },
+          "hpdc-gnode3": {
+              "port": 3,
+              "rank": 3,
+              "mac": "94:6d:ae:8c:ad:74",
+              "ip": "42.0.0.3"
+          },
+          "hpdc-gnode4": {
+              "port": 4,
+              "rank": 4,
+              "mac": "94:6d:ae:8c:e4:7c",
+              "ip": "42.0.0.4"
+          }
+      },
+      "active-workers": 2,
+      "mgid": 2,
+      "udp-port-base": 4242,
+      "timeout": 2,
+      "threads": 8,
+      "burst": 1,
+      "device": {
+          "name": "s1",
+          "mac": "42:00:00:00:00:00",
+          "ip": "42.0.0.0",
+          "port": 4242
+      }
+  }
+}
