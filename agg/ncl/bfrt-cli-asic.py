@@ -49,7 +49,7 @@ NET.forwarding_table.clear()
 NET.arp_table.clear()
 
 all_ports = [get_dport_from_fport(C['workers'][w]['port'])
-             for w in C['workers']]
+             for (i,w) in enumerate(C['workers']) if i < C['active-workers']]
 
 # multicast
 print("multicast groups")
@@ -74,32 +74,34 @@ print("ncrt configuration")
 NCRT.ingress.tbl.forward.multicast.add_with_ncl_multicast(ncl_act_arg=42, mgid=C['mgid'])
 print(f" ncl_multicast(42) -> {C['mgid']}")
 
-for w in C['workers']:
-    dport = get_dport_from_fport(C['workers'][w]['port'])
-    rank = C['workers'][w]['rank']
+for i, w in enumerate(C['workers']):
+    if i < C['active-workers']:
+        dport = get_dport_from_fport(C['workers'][w]['port'])
+        rank = C['workers'][w]['rank']
 
-    # enable switch ports
-    bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
-                        PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
+        # enable switch ports
+        bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
+                            PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
 
-    NCRT.ingress.tbl.forward.host.add_with_ncl_forward_host(ncl_act_arg=rank, port=dport)
-    NCRT.egress.tbl.dev.ports.add_with_host_port(egress_port=dport, id=rank, ip=C['workers'][w]['ip'], mac=C['workers'][w]['mac'], neighbor=True)
+        NCRT.ingress.tbl.forward.host.add_with_ncl_forward_host(ncl_act_arg=rank, port=dport)
+        NCRT.egress.tbl.dev.ports.add_with_host_port(egress_port=dport, id=rank, ip=C['workers'][w]['ip'], mac=C['workers'][w]['mac'], neighbor=True)
 
-    # A bit of a dirty hack (the compiler is compicit!). Need something better in general
-    NCRT.egress.tbl.udp.adj.ports.add_with_udp_ports_swap(cid=1, act=NCL_MULTICAST_ACTION, h_dst=rank)
-    NCRT.egress.tbl.udp.adj.ports.add_with_udp_ports_swap(cid=1, act=NCL_REFLECT_ACTION, h_dst=rank)
+        # A bit of a dirty hack (the compiler is compicit!). Need something better in general
+        NCRT.egress.tbl.udp.adj.ports.add_with_udp_ports_swap(cid=1, act=NCL_MULTICAST_ACTION, h_dst=rank)
+        NCRT.egress.tbl.udp.adj.ports.add_with_udp_ports_swap(cid=1, act=NCL_REFLECT_ACTION, h_dst=rank)
 
-    print(f" host {C['workers'][w]['rank']} -> port {dport}")
+        print(f" host {C['workers'][w]['rank']} -> port {dport}")
 
 # NETWORKING
 print("network configuration")
-for w in C['workers']:
-    dport = get_dport_from_fport(C['workers'][w]['port'])
-    mac = EUI(C['workers'][w]['mac'])
-    ip = IPAddress(C['workers'][w]['ip'])
-    NET.arp_table.add_with_arp_resolve(dst_proto_addr=ip, mac=mac)
-    NET.forwarding_table.add_with_forward(dst_addr=mac, port=dport)
-    print(f" {mac}/{ip} -> port {dport}")
+for i, w in enumerate(C['workers']):
+    if i < C['active-workers']:
+        dport = get_dport_from_fport(C['workers'][w]['port'])
+        mac = EUI(C['workers'][w]['mac'])
+        ip = IPAddress(C['workers'][w]['ip'])
+        NET.arp_table.add_with_arp_resolve(dst_proto_addr=ip, mac=mac)
+        NET.forwarding_table.add_with_forward(dst_addr=mac, port=dport)
+        print(f" {mac}/{ip} -> port {dport}")
 
 NET.arp_table.set_default_with_multicast(mgid=1)
 NET.arp_table.add_with_arp_resolve(dst_proto_addr=IPAddress(
