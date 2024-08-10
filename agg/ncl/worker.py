@@ -474,7 +474,7 @@ print(worker())
 
 
 def AllReduce(opt, data):
-    if opt.mp:
+    if opt.multiprocessing:
         threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
             opt, pid, data)) for pid in range(opt.threads)]
     else:
