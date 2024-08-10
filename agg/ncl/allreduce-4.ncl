@@ -1,7 +1,6 @@
 #define NUM_WORKERS        4
-// #define COMPLETE_BITMAP    0xFFFFFFFF >> (32 - NUM_WORKERS)
 #define THREADS_PER_WORKER 32
-#define WINDOW             64
+#define WINDOW             128
 #define NUM_SLOTS          NUM_WORKERS * THREADS_PER_WORKER * WINDOW
 #define SLOT_SIZE          32
 
@@ -32,17 +31,12 @@ _kernel(1) void allreduce(uint8_t ver, uint16_t bmp_idx, uint16_t agg_idx,
     Count[agg_idx] = NUM_WORKERS - 1;
   } else {
     uint32_t seen = bitmap & mask;
-    // uint32_t fini = bitmap | mask;
 
     expo = atomic_cond_max_new(&Expo[agg_idx], !seen, expo);
 
     for (int i = 0; i < SLOT_SIZE; ++i)
       values[i] = atomic_cond_add_new(&Agg[i][agg_idx], !seen, values[i]);
 
-    // if (!atomic_cond_dec(&Count[agg_idx], !seen)) // slot finished
-    //   return _reflect();
-    // if (fini == COMPLETE_BITMAP)
-    //   return _multicast(42);
     auto cnt = atomic_cond_dec(&Count[agg_idx], !seen);
     if (cnt == 0)
       return _reflect();
