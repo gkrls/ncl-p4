@@ -106,7 +106,7 @@ if opt.config:
             print(
                 f"error: ip address {c['workers'][w]['ip']} from config.json not found in this server")
             sys.exit(1)
-    opt.workers = c['active-workers'] #len(c['workers'])
+    opt.workers = c['active-workers']  # len(c['workers'])
     opt.rank = c['workers'][w]['rank']
     opt.port = c['udp-port-base']
     opt.dev_mac = c['device']['mac']
@@ -195,6 +195,7 @@ class Agg(Packet):
             else:
                 print(f"  {field.name}={getattr(self, field.name)}")
 
+
 NCP_HEADER_SIZE = 1 + 1 + 1 + 1 + 1 + 1 + 2
 AGG_HEADER_SIZE = 1 + 2 + 2 + 4 + 4 + 4
 AGG_VALUES_SIZE = opt.values_per_packet * 4
@@ -203,6 +204,7 @@ PACKET_SIZE = NCP_HEADER_SIZE + AGG_HEADER_SIZE + AGG_VALUES_SIZE
 # Format: unsigned char (1 byte), two unsigned shorts (2 bytes each), three unsigned ints (4 bytes each)
 AGG_HEADER_FRMT = '!BHHIII'
 AGG_VALUES_FRMT = '!' + 'I' * opt.values_per_packet
+
 
 def unreliable_send_debug(tid, soc, addr, data, **kwargs):
     p = Agg(data[NCP_HEADER_SIZE:])
@@ -312,15 +314,15 @@ VERSIONS = multiprocessing.Array(
     ctypes.c_uint8, [opt.starting_version] * opt.threads, lock=False)
 
 
-
 def create_ncp(buffer, h_src, h_dst, d_src, d_dst, cid, action, action_arg):
-    buffer[0] = h_src;
-    buffer[1] = h_dst;
-    buffer[2] = d_src;
-    buffer[3] = d_dst;
-    buffer[4] = cid;
-    buffer[5] = action;
+    buffer[0] = h_src
+    buffer[1] = h_dst
+    buffer[2] = d_src
+    buffer[3] = d_dst
+    buffer[4] = cid
+    buffer[5] = action
     struct.pack_into('H', buffer, 6, action_arg)
+
 
 def create_agg(buffer, ver, bmp_idx, agg_idx, mask, offset, expo, vals):
     """
@@ -338,17 +340,20 @@ def create_agg(buffer, ver, bmp_idx, agg_idx, mask, offset, expo, vals):
     """
     struct.pack_into(AGG_HEADER_FRMT, buffer, NCP_HEADER_SIZE, ver,
                      bmp_idx, agg_idx, mask, offset, expo)
-    struct.pack_into(AGG_VALUES_FRMT, buffer, NCP_HEADER_SIZE + AGG_HEADER_SIZE, *vals)
+    struct.pack_into(AGG_VALUES_FRMT, buffer,
+                     NCP_HEADER_SIZE + AGG_HEADER_SIZE, *vals)
     return buffer
 
 
 def read_packet_ncp(buffer):
     return buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], struct.unpack_from('H', buffer, 6)[0]
 
+
 def read_packet_agg(buffer):
     ver, bmp_idx, agg_idx, mask, offset, expo = struct.unpack_from(
         AGG_HEADER_FRMT, buffer, NCP_HEADER_SIZE)
-    vals = struct.unpack_from(AGG_VALUES_FRMT, buffer, NCP_HEADER_SIZE + AGG_HEADER_SIZE)
+    vals = struct.unpack_from(AGG_VALUES_FRMT, buffer,
+                              NCP_HEADER_SIZE + AGG_HEADER_SIZE)
     return ver, bmp_idx, agg_idx, mask, offset, expo, vals
 
 
@@ -373,7 +378,8 @@ def socket_worker(opt, tid, data):
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 * sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
+    soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 *
+                   soc.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
     soc.bind((opt.ip, opt.port + tid))
 
     device = (opt.dev_ip, opt.dev_port)
@@ -400,7 +406,8 @@ def socket_worker(opt, tid, data):
         agg_idx = bmp_idx + starting_ver * opt.slots
 
         create_ncp(window[i], opt.rank, 0, 0, 1, 1, 0, 0)
-        create_agg(window[i], starting_ver, bmp_idx, agg_idx, mask, lo, expo, data[lo:hi])
+        create_agg(window[i], starting_ver, bmp_idx,
+                   agg_idx, mask, lo, expo, data[lo:hi])
 
         # p = Ncp(h_src=opt.rank, d_dst=1, cid=1) / Agg(ver=starting_ver, bmp_idx=bmp_idx,
         #                                               agg_idx=agg_idx, mask=mask, offset=lo, expo=expo, vals=list(data[lo:hi]))
