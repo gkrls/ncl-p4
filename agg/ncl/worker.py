@@ -89,6 +89,8 @@ parser.add_argument("--warmup", metavar="steps", type=int, default=0,
                     help="number of warmup steps to perform (default=0)")
 parser.add_argument("--profile", metavar="steps", type=int, default=0,
                     help="number of profile steps to perform (default=0)")
+parser.add_argument("-mp", "--multiprocessing", action="store_true",
+                    help="Use multiprocessing instead of multithreading")
 
 opt = parser.parse_args()
 opt.ip = get_first_ip()
@@ -472,10 +474,12 @@ print(worker())
 
 
 def AllReduce(opt, data):
-    threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
-        opt, pid, data)) for pid in range(opt.threads)]
-    # threads = [threading.Thread(name="t%d" % tid, target=socket_worker, args=(opt, tid, SOCKETS[tid], data,))
-    #            for tid in range(opt.threads)]
+    if opt.mp:
+        threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
+            opt, pid, data)) for pid in range(opt.threads)]
+    else:
+        threads = [threading.Thread(name="t%d" % tid, target=socket_worker, args=(opt, tid, data,))
+                   for tid in range(opt.threads)]
 
     start = time.time()
     for t in threads:
