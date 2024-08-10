@@ -463,7 +463,7 @@ def socket_worker(opt, tid, data):
 
 
 print(worker(), "World: %d" % opt.workers, "| IP: %s" % opt.ip, "| Ports: %d-%d" % (opt.port,
-      opt.port + opt.threads - 1), "| %d: %d" % ("Processes" if opt.multiprocessing else "Threads", opt.threads))
+      opt.port + opt.threads - 1), "| %s: %d" % ("Processes" if opt.multiprocessing else "Threads", opt.threads))
 print(worker(), "Device: %s:%s | Reducers: %d | Slots: %d" %
       (opt.dev_ip, opt.dev_port, opt.reducers, opt.slots))
 print(worker(), "Packet loss simulation: %s" % (["None", "ingress", "egress", "ingress/egress"][opt.drop_mode]),
