@@ -1,6 +1,7 @@
 BUILD := $(shell pwd)/build
 NCLSRC := $(shell realpath "allreduce-${WORKERS}.ncl")
 P4SRC := $(shell realpath "allreduce-${WORKERS}.ncl.device.1.p4")
+P4CONF := allreduce-${WORKERS}.ncl.device.1.p4
 P4NAME:= p4_allreduce_${WORKERS}_ncl_device_1
 
 compile-ncl:
@@ -26,7 +27,7 @@ asic: asic-compile
 	tmux new -d -s switch
 	tmux split-window -t switch:0 -v
 	tmux send-keys -t switch.0 '${SDE}/run_bfshell.sh -b ${PWD}/bfrt-cli-asic.py' C-m
-	tmux send-keys -t switch.1 'cd ${BUILD}/log && ${SDE}/run_switchd.sh -c ${BUILD}/${P4NAME}/${P4NAME}.conf ' C-m
+	tmux send-keys -t switch.1 'cd ${BUILD}/log && ${SDE}/run_switchd.sh -c ${BUILD}/${P4NAME}/${P4CONF} ' C-m
 	tmux attach -t switch
 
 hpdc-2-servers-setup-ips:
