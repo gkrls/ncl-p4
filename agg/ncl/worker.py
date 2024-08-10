@@ -373,7 +373,7 @@ def socket_worker(opt, tid, data):
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 * BUFFER_SIZE)
+    soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 * sock.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
     soc.bind((opt.ip, opt.port + tid))
 
     device = (opt.dev_ip, opt.dev_port)
