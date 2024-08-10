@@ -418,7 +418,7 @@ def socket_worker(opt, tid, data):
         soc.sendto(p, device)
         # SEND(tid, soc, device, p)
 
-    out_p = window[0], in_p = window[1]
+    out_p, in_p = window[0], window[1]
     # in_p = bytearray(PACKET_SIZE)
 
     received = 0
