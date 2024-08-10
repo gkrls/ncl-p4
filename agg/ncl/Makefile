@@ -1,7 +1,7 @@
 BUILD := $(shell pwd)/build
 NCLSRC := $(shell realpath "allreduce-${WORKERS}.ncl")
 P4SRC := $(shell realpath "allreduce-${WORKERS}.ncl.device.1.p4")
-P4CONF := allreduce-${WORKERS}.ncl.device.1.p4
+P4CONF := allreduce-${WORKERS}.ncl.device.1.conf
 P4NAME:= p4_allreduce_${WORKERS}_ncl_device_1
 
 compile-ncl:
