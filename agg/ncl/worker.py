@@ -459,7 +459,7 @@ def socket_worker(opt, tid, data):
     soc.close()
 
 
-print(worker(), "World: %d" % opt.workers, "| IP: %s" % get_first_ip(),
+print(worker(), "World: %d" % opt.workers, "| IP: %s" % opt.ip,
       "| Ports: %d-%d" % (opt.port, opt.port + opt.threads - 1), "| Threads: %d" % opt.threads)
 print(worker(), "Device: %s:%s | Reducers: %d | Slots: %d" %
       (opt.dev_ip, opt.dev_port, opt.reducers, opt.slots))
