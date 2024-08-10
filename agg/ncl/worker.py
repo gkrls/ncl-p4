@@ -89,7 +89,7 @@ parser.add_argument("--warmup", metavar="steps", type=int, default=0,
                     help="number of warmup steps to perform (default=0)")
 parser.add_argument("--profile", metavar="steps", type=int, default=0,
                     help="number of profile steps to perform (default=0)")
-parser.add_argument("-mp", "--multiprocessing", action="store_true",
+parser.add_argument("-mp", "--multiprocessing", default=False, action="store_true",
                     help="Use multiprocessing instead of multithreading")
 
 opt = parser.parse_args()
@@ -462,8 +462,8 @@ def socket_worker(opt, tid, data):
     soc.close()
 
 
-print(worker(), "World: %d" % opt.workers, "| IP: %s" % opt.ip,
-      "| Ports: %d-%d" % (opt.port, opt.port + opt.threads - 1), "| Threads: %d" % opt.threads)
+print(worker(), "World: %d" % opt.workers, "| IP: %s" % opt.ip, "| Ports: %d-%d" % (opt.port,
+      opt.port + opt.threads - 1), "| %d: %d" % ("Processes" if opt.mp else "Threads"), opt.threads)
 print(worker(), "Device: %s:%s | Reducers: %d | Slots: %d" %
       (opt.dev_ip, opt.dev_port, opt.reducers, opt.slots))
 print(worker(), "Packet loss simulation: %s" % (["None", "ingress", "egress", "ingress/egress"][opt.drop_mode]),
