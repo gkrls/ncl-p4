@@ -133,7 +133,7 @@ opt.values_per_packet = opt.reducers
 opt.size = opt.threads * opt.window * opt.values_per_packet * opt.multiplier
 opt.values_per_thread = opt.size // opt.threads
 opt.packets_per_thread = opt.size // opt.threads // opt.values_per_packet
-opt.slots = opt.threads * opt.window * opt.workers
+opt.slots = opt.threads * opt.window #* opt.workers
 opt.aggregators = 2 * opt.slots
 
 if opt.ip is None:
@@ -378,7 +378,7 @@ def socket_worker(opt, tid, data):
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 *
+    soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 10 *
                    soc.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF))
     soc.bind((opt.ip, opt.port + tid))
 

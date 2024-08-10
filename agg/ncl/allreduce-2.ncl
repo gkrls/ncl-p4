@@ -1,7 +1,6 @@
 #define NUM_WORKERS        2
-// #define COMPLETE_BITMAP    0xFFFFFFFF >> (32 - NUM_WORKERS)
-#define THREADS_PER_WORKER 32
-#define WINDOW             128
+#define THREADS_PER_WORKER 64
+#define WINDOW             256
 #define NUM_SLOTS          NUM_WORKERS * THREADS_PER_WORKER * WINDOW
 #define SLOT_SIZE          32
 

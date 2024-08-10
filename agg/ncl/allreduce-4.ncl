@@ -1,6 +1,6 @@
 #define NUM_WORKERS        4
-#define THREADS_PER_WORKER 32
-#define WINDOW             128
+#define THREADS_PER_WORKER 64
+#define WINDOW             256
 #define NUM_SLOTS          NUM_WORKERS * THREADS_PER_WORKER * WINDOW
 #define SLOT_SIZE          32
 
