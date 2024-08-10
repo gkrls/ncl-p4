@@ -11,7 +11,7 @@ def get_dport_from_fport(fp, ch=0):
 
 
 with open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'config.json'))) as f:
-    C = json.load(f)['model']
+    C = json.load(f)['asic']
 
 
 # clear multicast nodes/groups
