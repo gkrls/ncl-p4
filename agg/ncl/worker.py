@@ -368,7 +368,7 @@ def read_packet_agg_offset(buffer):
 
 def socket_worker(opt, tid, data):
 
-    os.sched_setaffinity(0, {tid % 24})
+    os.sched_setaffinity(tid, {tid % 24})
 
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -410,22 +410,23 @@ def socket_worker(opt, tid, data):
     for p in window:
         SEND(tid, soc, device, p)
 
-    p = window[0]
+    out_p = window[0]
+    in_p = bytearray(PACKET_SIZE)
+
     received = 0
 
     while True:
-        RECV_INTO(tid, soc, p)
+        RECV_INTO(tid, soc, in_p)
 
         received += opt.values_per_packet
 
-        in_ver = read_packet_agg_ver(p)
+        in_ver = read_packet_agg_ver(in_p)
+        in_offset = read_packet_agg_offset(in_p)
+        in_bmp_idx = read_packet_agg_bmp_idx(in_p)
 
         if received >= opt.values_per_thread:
             VERSIONS[tid] = 1 - in_ver
             break
-
-        in_offset = read_packet_agg_offset(p)
-        in_bmp_idx = read_packet_agg_bmp_idx(p)
 
         lo = in_offset + opt.window * opt.values_per_packet
         if lo >= end:
@@ -440,9 +441,9 @@ def socket_worker(opt, tid, data):
         bmp_idx = in_bmp_idx
         agg_idx = bmp_idx + ver * opt.slots
 
-        create_ncp(p, opt.rank, 0, 0, 1, 1, 0, 0)
-        create_agg(p, ver, bmp_idx, agg_idx, mask, lo, expo, list(data[lo:hi]))
-        SEND(tid, soc, device, p)
+        # create_ncp(p, opt.rank, 0, 0, 1, 1, 0, 0)
+        create_agg(out_p, ver, bmp_idx, agg_idx, mask, lo, expo, data[lo:hi])
+        SEND(tid, soc, device, out_p)
 
     soc.close()
 
