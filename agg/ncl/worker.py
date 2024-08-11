@@ -55,12 +55,15 @@ DEFAULT_WORLD = 2
 parser = argparse.ArgumentParser()
 parser.add_argument("-R", "--rank", type=int, default=DEFAULT_RANK,
                     help=f"worker rank. Must be >= {DEFAULT_RANK} (default={DEFAULT_RANK})")
-parser.add_argument("-N", "--workers", default=DEFAULT_WORLD,
+parser.add_argument("-I", "--ip", default="wtf", type=str,
+                    help="the worker's ip address")
+parser.add_argument("-P", "--port", default=DEFAULT_BASE_PORT, type=int,
+                    help=f"Base UDP port for ML (default={DEFAULT_BASE_PORT})")
+parser.add_argument("-W", "--workers", default=DEFAULT_WORLD, type=int,
                     help=f"number of workers. Must be >= {DEFAULT_WORLD} (default={DEFAULT_WORLD})")
 parser.add_argument("-D", "--device", default=DEFAULT_DEVICE, metavar="mac|ip|port",
                     help=f"Switch aggregator info (default={DEFAULT_DEVICE})")
-parser.add_argument("-P", "--port", default=DEFAULT_BASE_PORT, type=int,
-                    help=f"Base UDP port for ML (default={DEFAULT_BASE_PORT})")
+
 
 parser.add_argument("-j", "--threads", default=1, type=int,
                     help="number of threads (default=1)")
@@ -81,8 +84,7 @@ parser.add_argument("--drop-mode", type=int, default=0, choices=[0, 1, 2, 3],
                     help="simulate packet loss. (0) no drop, (1) ingress drop, (2) egress drop, (3) ingress+egress drop")
 parser.add_argument("--drop-prob", default=10, choices=range(0, 101), type=int,
                     metavar="[0,100]", help="probability to drop a packet if --drop-mode > 0")
-parser.add_argument("--perf", action="store_true",
-                    help="run in performance mode")
+parser.add_argument("--perf", action="store_true", help="run in performance mode")
 parser.add_argument("--config", metavar="config:worker", type=str,
                     help="override settings with configuration from config.json")
 parser.add_argument("--warmup", metavar="steps", type=int, default=0,
@@ -93,7 +95,7 @@ parser.add_argument("-mt", "--multithreading", default=False, action="store_true
                     help="Use threads instead of processes")
 
 opt = parser.parse_args()
-opt.ip = get_first_ip()
+opt.ip = get_first_ip() if opt.ip is None else opt.ip
 
 if opt.config:
     print(f"Using configuration {opt.config} from config.json")
@@ -204,31 +206,13 @@ AGG_VALUES_SIZE = opt.values_per_packet * 4
 PACKET_SIZE = NCP_HEADER_SIZE + AGG_HEADER_SIZE + AGG_VALUES_SIZE
 
 # Format: unsigned char (1 byte), two unsigned shorts (2 bytes each), three unsigned ints (4 bytes each)
-AGG_HEADER_FRMT = '!BHHIII'
-AGG_VALUES_FRMT = '!' + 'I' * opt.values_per_packet
 
-
-def unreliable_send_debug(tid, soc, addr, data, **kwargs):
-    p = Agg(data[NCP_HEADER_SIZE:])
-    simulate_drop = random.randint(1, 100) < opt.drop_prob
-    retransmission = 'is_retransmission' in kwargs and kwargs['is_retransmission']
-    pre = f"O{'.RE' if retransmission else ''}{'.INGRESS-DROP' if simulate_drop else ''}.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
-    print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
-
-    return len(p) if simulate_drop else soc.sendto(data, addr)
-
-
-def unreliable_recv_debug(tid, soc):
-    data, addr = soc.recvfrom(PACKET_SIZE)
-    p = Agg(data[NCP_HEADER_SIZE:])
-    simulate_drop = random.randint(1, 100) < opt.drop_prob
-    pre = f"I{'.EGRESS-DROP' if simulate_drop else ''}.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
-    print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({len(data)}B)")
-    if simulate_drop:
-        raise socket.timeout
-    return data, addr
+# TODO: This worker assumes no packet loss!
+# When we involve retransmissions we need to be checking that the
+# incoming packet is the not stale, and ignore it otherwise
+# Also, we cannot rely on the socket timeout. We need to do what
+# SwitchML does and start opt.window timer threads. This is not
+# very easy in python
 
 
 def reliable_send_debug(tid, soc, addr, data, **kwargs):
@@ -259,48 +243,21 @@ def reliable_recv(tid, soc):
 
 def reliable_recv_into_debug(tid, soc, buffer):
     sz, addr = soc.recvfrom_into(buffer, PACKET_SIZE)
-    p = Agg(buffer[NCP_HEADER_SIZE:])
-    pre = f"I.<{p.offset},{p.ver},{p.bmp_idx},{p.agg_idx}>"
+    ver, bmp_idx, agg_idx, mask, offset, expo, vals = read_packet_agg(buffer)
+
+    # p = Agg(buffer[NCP_HEADER_SIZE:])
+    pre = f"I.<{offset},{ver},{bmp_idx},{agg_idx}>"
     print(thread(tid),
-          f"{pre}{' ' * (32 - len(pre))}:{head(p.vals, 16)} expo: {p.expo} ({sz}B)")
+          f"{pre}{' ' * (32 - len(pre))}:{head(vals, 16)} expo: {expo} ({sz}B)")
     return sz, addr
 
 
 def reliable_recv_into(tid, soc, buffer):
     return soc.recvfrom_into(buffer, PACKET_SIZE)
 
-
-def expected_packet(tid, in_data, offset):
-    agg = Agg(in_data[NCP_HEADER_SIZE:])
-    if agg.offset != offset:
-        print(thread(
-            tid), f"I.<{agg.offset},{agg.bmp_idx},{agg.ver}> WRONG_OFFSET: expected {offset}")
-        return False, agg.offset, agg.ver
-    # if agg.ver != version:
-    #     print(thread(
-    #         tid), f"I.<{agg.offset},{agg.bmp_idx},{agg.ver}> WRONG_VERSION: expected {version}")
-    #     return False, agg.ver, agg.offset
-
-    return True, agg.offset, agg.ver
-
-
-def expected_packet_perf(tid, in_data, offset):
-    got_version = in_data[NCP_HEADER_SIZE]
-    got_offset = int.from_bytes(
-        in_data[NCP_HEADER_SIZE:][9:13], byteorder='big', signed=False)
-    return (got_version == version) and (got_offset == offset), got_offset, got_version
-
-
 def get_idx_range(opt, tid, maximum):
     start = tid * opt.values_per_thread
     return start,  min(maximum, start + opt.values_per_thread)
-
-# TODO: This worker assumes no packet loss!
-# When we involve retransmissions we need to be checking that the
-# incoming packet is the not stale, and ignore it otherwise
-# Also, we cannot rely on the socket timeout. We need to do what
-# SwitchML does and start opt.window timer threads. This is not
-# very easy in python
 
 
 SEND = reliable_send if opt.perf else (unreliable_send_debug if (
@@ -310,11 +267,12 @@ RECV = reliable_recv if opt.perf else (unreliable_recv_debug if (
 
 RECV_INTO = reliable_recv_into if opt.perf else reliable_recv_into_debug
 
-EXPECTED = expected_packet_perf if opt.perf else expected_packet
-
 VERSIONS = multiprocessing.Array(
     ctypes.c_uint8, [opt.starting_version] * opt.threads, lock=False)
 
+AGG_HEADER_FRMT = '!BHHIII'                            # <-- CONVERT BIG ENDIAN
+AGG_VALUES_FRMT_OUT = 'I' * opt.values_per_packet   # <-- KEEP LITTLE ENDIAN
+AGG_VALUES_FRMT_IN = 'I' * opt.values_per_packet    # <-- KEEP LITTLE ENDIAN
 
 def create_ncp(buffer, h_src, h_dst, d_src, d_dst, cid, action, action_arg):
     buffer[0] = h_src
@@ -342,9 +300,9 @@ def create_agg(buffer, ver, bmp_idx, agg_idx, mask, offset, expo, vals):
     """
     struct.pack_into(AGG_HEADER_FRMT, buffer, NCP_HEADER_SIZE, ver,
                      bmp_idx, agg_idx, mask, offset, expo)
-    struct.pack_into(AGG_VALUES_FRMT, buffer,
+    struct.pack_into(AGG_VALUES_FRMT_OUT, buffer,
                      NCP_HEADER_SIZE + AGG_HEADER_SIZE, *vals)
-    return buffer
+    # buffer[NCP_HEADER_SIZE + AGG_HEADER_SIZE:] = vals;
 
 
 def read_packet_ncp(buffer):
@@ -354,7 +312,7 @@ def read_packet_ncp(buffer):
 def read_packet_agg(buffer):
     ver, bmp_idx, agg_idx, mask, offset, expo = struct.unpack_from(
         AGG_HEADER_FRMT, buffer, NCP_HEADER_SIZE)
-    vals = struct.unpack_from(AGG_VALUES_FRMT, buffer,
+    vals = struct.unpack_from(AGG_VALUES_FRMT_IN, buffer,
                               NCP_HEADER_SIZE + AGG_HEADER_SIZE)
     return ver, bmp_idx, agg_idx, mask, offset, expo, vals
 
@@ -381,7 +339,7 @@ def socket_worker(opt, tid, data):
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     soc.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF,
-                   max(soc.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF), opt.window * PACKET_SIZE * 2))
+                   min(soc.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF), opt.window * PACKET_SIZE * 2))
     soc.bind((opt.ip, opt.port + tid))
 
     device = (opt.dev_ip, opt.dev_port)
@@ -416,8 +374,8 @@ def socket_worker(opt, tid, data):
         # create_packet(window[i], starting_ver, bmp_idx, agg_idx, mask, lo, expo, list(data[lo:hi]))
 
     # #send burst
-    for p in window:
-        soc.sendto(p, device)
+    for i in range(opt.window):
+        soc.sendto(window[i], device)
         # SEND(tid, soc, device, p)
 
     out_p = window[0]
@@ -428,8 +386,8 @@ def socket_worker(opt, tid, data):
     offset_by = opt.window * opt.values_per_packet
 
     while True:
-        # RECV_INTO(tid, soc, in_p)
-        soc.recv_into(in_p, PACKET_SIZE)
+        RECV_INTO(tid, soc, in_p)
+        # soc.recv_into(in_p, PACKET_SIZE)
 
         received += opt.values_per_packet
 

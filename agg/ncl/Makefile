@@ -23,6 +23,10 @@ mininet-network: build_dir
 asic-compile: build_dir
 	${SDE_INSTALL}/bin/bf-p4c -b tofino -o ${BUILD}/${P4NAME} ${P4SRC}
 
+
+worker: worker.cpp worker_utils.h
+	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker.cpp -o worker
+
 asic: asic-compile
 	tmux new -d -s switch
 	tmux split-window -t switch:0 -v
@@ -65,6 +69,25 @@ hpdc-6-servers-setup-pull:
 	ssh hpdc-gnode4 "cd ncl-p4 && git pull"
 	ssh hpdc-gnode5 "cd ncl-p4 && git pull"
 	ssh hpdc-gnode6 "cd ncl-p4 && git pull"
+
+
+hpdc-2-servers-cpp-worker:
+	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
+
+hpdc-4-servers-cpp-worker:
+	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode4 "cd ncl-p4/agg/ncl && make worker"
+
+hpdc-6-servers-cpp-worker:
+	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode4 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode5 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode6 "cd ncl-p4/agg/ncl && make worker"
 
 hpdc-2-servers-setup: hpdc-servers-setup-ips
 	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"

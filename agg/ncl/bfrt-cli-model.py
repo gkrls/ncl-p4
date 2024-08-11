@@ -79,8 +79,10 @@ for w in C['workers']:
     rank = C['workers'][w]['rank']
 
     # enable switch ports
-    bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
-                        PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
+    # bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
+    #                     PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
+    NCRT.ingress.tbl.forward.host.add_with_ncl_forward_host(ncl_act_arg=rank, port=dport)
+    NCRT.egress.tbl.dev.ports.add_with_host_port(egress_port=dport, id=rank, ip=C['workers'][w]['ip'], mac=C['workers'][w]['mac'], neighbor=True)
 
     # A bit of a dirty hack (the compiler is compicit!). Need something better in general
     NCRT.egress.tbl.udp.adj.ports.add_with_udp_ports_swap(cid=1, act=NCL_MULTICAST_ACTION, h_dst=rank)
