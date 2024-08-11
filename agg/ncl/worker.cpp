@@ -481,13 +481,15 @@ int main(int argc, char **argv) {
     throughput += currentThroughput;
     latency += ns;
 
+    double gbps = ((double) (opt.Size * 4 * 8)) / ((double) ns);
+
     worker() << "AllReduce " << (opt.Size * opt.World) << " | "
              << "(" << opt.Size << "/" << (opt.Size * sizeof(uint32_t))
              << "B per worker) : took " << std::setw(2) << std::setfill('0')
              << (ns / 1000000000UL) << ":" << std::setw(3) << std::setfill('0')
              << ((ns % 1000000000) / 1000000) << ", " << std::fixed
              << std::setprecision(2) << currentThroughput << " values/sec "
-             << (((double) (opt.Size * opt.World * 4 * 8)) / ns) << " Gbps" << std::endl;
+             << gbps << " Gbps" << std::endl;
   }
 
   // Free memory
