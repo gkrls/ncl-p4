@@ -469,7 +469,6 @@ int main(int argc, char **argv) {
   if (opt.Warmup)
     worker() << '\n';
 
-
   uint64_t latency = 0;
   double throughput = 0;
   for (auto s = 0; s < opt.Steps; ++s) {
@@ -487,7 +486,8 @@ int main(int argc, char **argv) {
              << "B per worker) : took " << std::setw(2) << std::setfill('0')
              << (ns / 1000000000UL) << ":" << std::setw(3) << std::setfill('0')
              << ((ns % 1000000000) / 1000000) << ", " << std::fixed
-             << std::setprecision(2) << currentThroughput << " values/sec\n";
+             << std::setprecision(2) << currentThroughput << " values/sec "
+             << ((opt.Size * opt.World * 4 * 8) / ns) << " Gbps";
   }
 
   // Free memory
