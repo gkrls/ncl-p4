@@ -491,8 +491,10 @@ def AllReduce(opt, data):
 
 if __name__ == "__main__":
     if opt.warmup:
-        DATA = multiprocessing.Array(ctypes.c_uint32, [random.randint(1, 50) for _ in range(
-            opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
+        # DATA = multiprocessing.Array(ctypes.c_uint32, [random.randint(1, 50) for _ in range(
+        #     opt.size)] if opt.random else ([opt.rank] * opt.size), lock=False)
+        DATA = np.random.randint(
+            1, 50, size=opt.size, dtype=ctypes.c_uint32) if opt.random else np.full(opt.size, opt.rank, dtype=ctypes.c_uint32)
 
         for s in range(opt.warmup):
             print(worker(), f"Running warmup step {s + 1}...")
