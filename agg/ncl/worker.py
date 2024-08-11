@@ -89,8 +89,8 @@ parser.add_argument("--warmup", metavar="steps", type=int, default=0,
                     help="number of warmup steps to perform (default=0)")
 parser.add_argument("--profile", metavar="steps", type=int, default=0,
                     help="number of profile steps to perform (default=0)")
-parser.add_argument("-mp", "--multiprocessing", default=False, action="store_true",
-                    help="Use multiprocessing instead of multithreading")
+parser.add_argument("-mt", "--multithreading", default=False, action="store_true",
+                    help="Use threads instead of processes")
 
 opt = parser.parse_args()
 opt.ip = get_first_ip()
@@ -463,7 +463,7 @@ def socket_worker(opt, tid, data):
 
 
 print(worker(), "World: %d" % opt.workers, "| IP: %s" % opt.ip, "| Ports: %d-%d" % (opt.port,
-      opt.port + opt.threads - 1), "| %s: %d" % ("Processes" if opt.multiprocessing else "Threads", opt.threads))
+      opt.port + opt.threads - 1), "| %s: %d" % ("Threads" if opt.multithreading else "Processes", opt.threads))
 print(worker(), "Device: %s:%s | Reducers: %d | Slots: %d" %
       (opt.dev_ip, opt.dev_port, opt.reducers, opt.slots))
 print(worker(), "Packet loss simulation: %s" % (["None", "ingress", "egress", "ingress/egress"][opt.drop_mode]),
@@ -474,12 +474,12 @@ print(worker())
 
 
 def AllReduce(opt, data):
-    if opt.multiprocessing:
-        threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
-            opt, pid, data)) for pid in range(opt.threads)]
-    else:
+    if opt.multithreading:
         threads = [threading.Thread(name="t%d" % tid, target=socket_worker, args=(opt, tid, data,))
                    for tid in range(opt.threads)]
+    else:
+        threads = [multiprocessing.Process(name="p%d" % pid, target=socket_worker, args=(
+            opt, pid, data)) for pid in range(opt.threads)]
 
     start = time.time()
     for t in threads:
