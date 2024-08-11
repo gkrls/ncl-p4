@@ -487,7 +487,7 @@ int main(int argc, char **argv) {
              << (ns / 1000000000UL) << ":" << std::setw(3) << std::setfill('0')
              << ((ns % 1000000000) / 1000000) << ", " << std::fixed
              << std::setprecision(2) << currentThroughput << " values/sec "
-             << ((opt.Size * opt.World * 4 * 8) / ns) << " Gbps";
+             << (((double) (opt.Size * opt.World * 4 * 8)) / ns) << " Gbps" << std::endl;
   }
 
   // Free memory
