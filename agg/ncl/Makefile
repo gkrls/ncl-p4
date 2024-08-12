@@ -3,6 +3,10 @@ NCLSRC := $(shell realpath "allreduce-${WORKERS}.ncl")
 P4SRC := $(shell realpath "allreduce-${WORKERS}.ncl.device.1.p4")
 P4CONF := allreduce-${WORKERS}.ncl.device.1.conf
 P4NAME:= p4_allreduce_${WORKERS}_ncl_device_1
+CXXFLAGS = -x c++ -g -std=c++17 -mavx2 -pthread
+ifdef RX_BURST
+    CXXFLAGS += -DRX_BURST
+endif
 
 compile-ncl:
 	${NCLANG} -ncc -ncl-is-device -ncl-target tna -ncl-device-id 1 -ncl-implicit-drop -emit-asm \
@@ -25,8 +29,8 @@ asic-compile: build_dir
 
 
 worker: worker.cpp worker2.cpp worker_utils.h
-	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker.cpp -o worker
-	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker2.cpp -o worker2
+	g++ ${CXXFLAGS} worker.cpp -o worker
+	g++ ${CXXFLAGS} worker2.cpp -o worker2
 
 asic: asic-compile
 	tmux new -d -s switch
