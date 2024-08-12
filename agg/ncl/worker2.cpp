@@ -28,6 +28,39 @@
 
 static options opt;
 
+namespace ncrt {
+// This stuff is generally handled by the compiler,
+// but not all of it is implemented yet so we will
+// do it manually
+
+struct __attribute__((packed)) ncp_h {
+  uint8_t h_src;
+  uint8_t h_dst;
+  uint8_t d_src;
+  uint8_t d_dst;
+  uint8_t cid;
+  uint8_t act;
+  uint16_t act_arg;
+};
+
+struct __attribute__((packed)) agg_h {
+  uint8_t ver;
+  uint16_t bmp_idx;
+  uint16_t agg_idx;
+  uint32_t mask;
+  uint32_t offset;
+  uint32_t expo;
+};
+
+struct __attribute__((packed)) ncl_h {
+  struct ncp_h ncp;
+  struct agg_h agg;
+};
+
+size_t NCL_PACKET_SIZE = sizeof(ncl_h) + (32 * sizeof(uint32_t));
+
+} // namespace ncrt
+
 inline std::ostream &worker(std::ostream &os = std::cout) {
   os << "[worker." << opt.Rank << "] ";
   return os;
@@ -59,6 +92,9 @@ void PrintWorkerInfo(std::ostream &O = std::cout) {
             << ", Size: " << (opt.Size * 4) << "B\n";
   worker(O) << "Packets: " << (opt.PacketsPerThread * opt.Threads)
             << ", PerThread: " << opt.PacketsPerThread
+            << ", Size: " << (sizeof(ncrt::ncl_h) + opt.ValuesPerPacket * 4)
+            << "B (" << sizeof(ncrt::ncl_h) << " + "
+            << (opt.ValuesPerPacket * 4) << ")"
             << ", Burst: " << opt.Window << '\n';
 }
 
@@ -179,39 +215,6 @@ bool GenerateVector(uint32_t **p, size_t size, uint32_t value) {
   return true;
 }
 
-namespace ncrt {
-// This stuff is generally handled by the compiler,
-// but not all of it is implemented yet so we will
-// do it manually
-
-struct __attribute__((packed)) ncp_h {
-  uint8_t h_src;
-  uint8_t h_dst;
-  uint8_t d_src;
-  uint8_t d_dst;
-  uint8_t cid;
-  uint8_t act;
-  uint16_t act_arg;
-};
-
-struct __attribute__((packed)) agg_h {
-  uint8_t ver;
-  uint16_t bmp_idx;
-  uint16_t agg_idx;
-  uint32_t mask;
-  uint32_t offset;
-  uint32_t expo;
-};
-
-struct __attribute__((packed)) ncl_h {
-  struct ncp_h ncp;
-  struct agg_h agg;
-};
-
-size_t NCL_PACKET_SIZE = sizeof(ncl_h) + (32 * sizeof(uint32_t));
-
-} // namespace ncrt
-
 void getIndexRangeForThread(uint32_t tid, uint32_t &lo, uint32_t &hi) {
   lo = tid * opt.ValuesPerThread;
   hi = std::min(lo + opt.ValuesPerThread, opt.Size);
@@ -267,8 +270,9 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
   for (auto i = 0, v = 0; i < opt.Window; ++i, v += 2) {
     iov[v].iov_base = &window[i];
     iov[v].iov_len = sizeof(ncrt::ncl_h);
-    iov[v + 1].iov_base = data + dataOffset;
+    iov[v + 1].iov_base = &data[dataOffset];
     iov[v + 1].iov_len = dataLen;
+
     dataOffset += opt.ValuesPerPacket;
 
     msg[i].msg_hdr.msg_name = &device;
@@ -290,25 +294,32 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
   // unsigned newVersion;
   // unsigned newOffset;
 
-  while (recvd < opt.PacketsPerThread) {
+  while (true) {
     // receive burst of opt.Window messages
     int n = recvmmsg(soc, msg, opt.Window, 0, nullptr);
+    // thread(tid) << "received: " << n << '\n';
     if (n == 0)
       continue;
 
     recvd += n;
+    if (recvd == opt.PacketsPerThread)
+      break;
 
     uint32_t newOffset = 0;
-    uint8_t newVersion = *version;
+    uint8_t newVersion = 0;
 
-    // struct iovec iov[2];
-    struct msghdr m;
+    struct iovec iov[2];
+    struct msghdr m = {};
+    m.msg_name = &device;
+    m.msg_namelen = sizeof(device);
+    m.msg_iov = iov;
+    m.msg_iovlen = 2;
+    // m.msg_control = nullptr;
+    // m.msg_controllen = 0;
+    // m.msg_flags = 0;
+    // m.msg_len = 0;
 
     for (auto i = 0; i < n; ++i) {
-      // auto &ncl = (ncrt::ncl_h &) window[i];
-      // auto *ncl = (ncrt::ncl_h *)&msg[i].msg_hdr.msg_iov[0];
-      // thread(tid) << "received ver: " << ((unsigned) window[i].agg.ver) <<
-      // '\n';
       window[i].ncp.h_src = opt.Rank;
       window[i].ncp.h_dst = 0;
       window[i].ncp.d_src = 0;
@@ -323,23 +334,16 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
       window[i].agg.agg_idx =
           htonl(newVersion ? ntohl(window[i].agg.agg_idx) + opt.Slots
                            : ntohl(window[i].agg.agg_idx) - opt.Slots);
-      //  : window[i].agg.agg_idx =
-      //        htonl(ntohl(window[i].agg.agg_idx) - opt.Slots);
       window[i].agg.mask = htonl(mask);
       window[i].agg.offset = htonl(newOffset);
       window[i].agg.expo = *expo;
 
-      // msg->msg_hdr.msg_iov[1].iov_base = &data[newOffset];
-      // iov[0].iov_base = &window[i];
-      // iov[0].iov_len = sizeof(ncrt::ncl_h);
-      // iov[1].iov_base = &data[newOffset];
-      // iov[1].iov_len = dataLen;
+      iov[0].iov_base = &window[i];
+      iov[0].iov_len = sizeof(ncrt::ncl_h);
+      iov[1].iov_base = &data[newOffset];
+      iov[1].iov_len = dataLen;
 
-      m.msg_iov = &iov[i];
-      m.msg_iovlen = 2;
-      m.msg_iov[1].iov_base = &data[newOffset];
-      sendmsg(soc, &m, 0);
-      // sendmmsg(soc, &msg[i], 1, 0);
+      int o = sendmsg(soc, &m, 0);
     }
 
     if (recvd >= opt.PacketsPerThread)

@@ -83,7 +83,7 @@ public:
                                       "override default starting version", 0,
                                       &Multiplier);
     parser.add<popl::Switch>("", "--random", "Generate random values");
-    parser.add<popl::Value<unsigned>>("", "multiplier",
+    parser.add<popl::Value<unsigned>>("m", "multiplier",
                                       "multiply the vector size by this value",
                                       1, &Multiplier);
     parser.add<popl::Switch>("", "perf", "run in performance mode", &Perf);
