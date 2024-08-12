@@ -21,6 +21,7 @@ public:
   bool Help;
   bool Perf;
   bool Random;
+  bool Pin;
   std::string IP;
   uint16_t Port;
   unsigned Steps;
@@ -95,6 +96,7 @@ public:
     parser.add<popl::Value<uint16_t>>("", "device-port", "device UDP port",
                                       4242, &DevicePort);
     parser.add<popl::Switch>("", "simd", "use SIMD whenever possible", &SIMD);
+    parser.add<popl::Switch>("", "pin", "ping threads to CPU cores", &Pin);
   }
 
   void parse(int argc, char **argv) {

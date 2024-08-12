@@ -221,10 +221,25 @@ void getIndexRangeForThread(uint32_t tid, uint32_t &lo, uint32_t &hi) {
   hi = std::min(lo + opt.ValuesPerThread, opt.Size);
 }
 
+void pinWorkerThread(uint32_t tid) {
+  auto cores = static_cast<int>(std::thread::hardware_concurrency());
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  CPU_SET(tid % cores, &cpuset);
+  pthread_t this_thread = pthread_self();
+  if (pthread_setaffinity_np(this_thread, sizeof(cpu_set_t), &cpuset) != 0) {
+      std::cerr << "Error setting thread affinity." << std::endl;
+      return;
+  }
+}
+
 void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             uint32_t *expo, uint32_t *data, size_t size,
             std::shared_future<void> sigstart) {
   sigstart.wait();
+
+  if (opt.Pin)
+    pinWorkerThread(tid);
 
   sockaddr_in device;
   device.sin_family = AF_INET;
