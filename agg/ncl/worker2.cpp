@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <arpa/inet.h> // For inet_addr
 #include <bits/types/struct_iovec.h>
+#include <bits/types/struct_timespec.h>
 #include <chrono>
 #include <cpuid.h>
 #include <cstdlib>
@@ -229,23 +230,26 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
   uint32_t start, end;
   getIndexRangeForThread(tid, start, end);
 
+  // thread(tid) << "starting version: " << (uint8_t)*version << "\n";
+
   // Create NCL(+agg) messages into the window buffer
   uint32_t mask = 1 << (opt.Rank - 1);
   uint16_t startingSlot = tid * opt.Window;
   uint8_t startingVersion = *version;
-  memset(window, 0, sizeof(ncrt::ncl_h) * opt.Window);
-  uint32_t offset;
-  for (auto i = 0; i < opt.Window; ++i) {
-    offset = start + i * opt.ValuesPerPacket;
+  uint8_t startingAggIdxOffset = startingVersion * opt.Slots;
 
+  memset(window, 0, sizeof(ncrt::ncl_h) * opt.Window);
+
+  uint32_t offset = start;
+  for (auto i = 0; i < opt.Window; ++i, offset += opt.ValuesPerPacket) {
+    // offset = start + i * opt.ValuesPerPacket;
     window[i].ncp.h_src = opt.Rank;
     window[i].ncp.d_dst = 1;
     window[i].ncp.cid = 1;
-    window[i].agg.ver = startingVersion;
     // We do not need to bswap all these but lets just do it for now
+    window[i].agg.ver = *version;
     window[i].agg.bmp_idx = htons(startingSlot + i);
-    window[i].agg.agg_idx =
-        htons(startingSlot + i + startingVersion * opt.Slots);
+    window[i].agg.agg_idx = htons(startingSlot + i + startingAggIdxOffset);
     window[i].agg.mask = htonl(mask);
     window[i].agg.offset = htonl(offset);
     window[i].agg.expo = htonl(*expo);
@@ -277,45 +281,69 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
     msg[i].msg_len = 0;
   }
   // Burst tx opt.Window message
-  int n = sendmmsg(soc, msg, opt.Window, 0);
-  thread(tid) << "send " << n << " messages\n";
+  sendmmsg(soc, msg, opt.Window, 0);
 
   size_t recvd = 0;
 
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
-  unsigned newVersion;
-  unsigned newOffset;
+  // unsigned newVersion;
+  // unsigned newOffset;
 
   while (recvd < opt.PacketsPerThread) {
     // receive burst of opt.Window messages
     int n = recvmmsg(soc, msg, opt.Window, 0, nullptr);
-    thread(tid) << "received: " << n << '\n';
     if (n == 0)
       continue;
 
     recvd += n;
 
+    uint32_t newOffset = 0;
+    uint8_t newVersion = *version;
+
+    // struct iovec iov[2];
+    struct msghdr m;
+
     for (auto i = 0; i < n; ++i) {
+      // auto &ncl = (ncrt::ncl_h &) window[i];
+      // auto *ncl = (ncrt::ncl_h *)&msg[i].msg_hdr.msg_iov[0];
+      // thread(tid) << "received ver: " << ((unsigned) window[i].agg.ver) <<
+      // '\n';
+      window[i].ncp.h_src = opt.Rank;
+      window[i].ncp.h_dst = 0;
+      window[i].ncp.d_src = 0;
+      window[i].ncp.d_dst = 1;
+      window[i].ncp.cid = 1;
+      window[i].ncp.act = 0;
+      window[i].ncp.act_arg = 0;
+      // newOffset = ntohl(ncl.agg.offset) + offsetBy;
       newOffset = ntohl(window[i].agg.offset) + offsetBy;
       newVersion = 1 - window[i].agg.ver;
-
-      window[i].agg.ver = 1 - newVersion;
+      window[i].agg.ver = newVersion;
       window[i].agg.agg_idx =
-          htonl(ntohl(newVersion ? window[i].agg.agg_idx + opt.Slots
-                                 : window[i].agg.agg_idx - opt.Slots));
+          htonl(newVersion ? ntohl(window[i].agg.agg_idx) + opt.Slots
+                           : ntohl(window[i].agg.agg_idx) - opt.Slots);
       //  : window[i].agg.agg_idx =
       //        htonl(ntohl(window[i].agg.agg_idx) - opt.Slots);
-      window[i].agg.mask = mask;
+      window[i].agg.mask = htonl(mask);
       window[i].agg.offset = htonl(newOffset);
       window[i].agg.expo = *expo;
 
-      msg->msg_hdr.msg_iov[1].iov_base = &data[newOffset];
-      sendmmsg(soc, &msg[i], 1, 0);
+      // msg->msg_hdr.msg_iov[1].iov_base = &data[newOffset];
+      // iov[0].iov_base = &window[i];
+      // iov[0].iov_len = sizeof(ncrt::ncl_h);
+      // iov[1].iov_base = &data[newOffset];
+      // iov[1].iov_len = dataLen;
+
+      m.msg_iov = &iov[i];
+      m.msg_iovlen = 2;
+      m.msg_iov[1].iov_base = &data[newOffset];
+      sendmsg(soc, &m, 0);
+      // sendmmsg(soc, &msg[i], 1, 0);
     }
 
     if (recvd >= opt.PacketsPerThread)
-      *version = 1 - newVersion;
+      *version = newVersion;
   }
 }
 
@@ -394,7 +422,7 @@ int main(int argc, char **argv) {
       sizeof(ncrt::ncl_h) * std::max<int>(2, opt.Window * opt.Threads));
 
   // Just use one exponent for now
-  uint32_t expo = opt.Random ? xorshift32() : opt.Rank;
+  uint32_t expo = opt.Rank; // opt.Random ? xorshift32() :
   uint32_t *data = nullptr;
   if (!GenerateVector(&data, opt.Size, opt.Random ? 0 : opt.Rank)) {
     std::cout << "error: failed to generate data\n";
@@ -449,7 +477,7 @@ int main(int argc, char **argv) {
   worker() << "Average latency over " << opt.Steps
            << " runs: " << (latency / 1000000000UL) << ":"
            << ((latency % 1000000000UL) / 1000000) << ":"
-           << ((latency % 1000000) / 1000) << '\n';
+           << ((latency % 1000000) / 1000) << " (s:m:μ)\n";
   worker() << "Average throughput over " << opt.Steps << " runs: " << throughput
            << " values/sec\n";
 }
