@@ -10,6 +10,7 @@
 #include <immintrin.h> // For AVX2
 #include <iomanip>
 #include <iostream>
+#include <istream>
 #include <iterator>
 #include <memory>
 #include <mutex>
@@ -56,6 +57,18 @@ struct __attribute__((packed)) ncl_h {
   struct ncp_h ncp;
   struct agg_h agg;
 };
+
+std::ostream &printNclPacket(ncl_h &h, uint32_t *data,
+                             std::ostream &o = std::cout) {
+  o << "[hs: " << ((unsigned)h.ncp.h_src) << " | hd:" << ((unsigned)h.ncp.h_dst)
+    << " | ds:" << ((unsigned)h.ncp.d_src)
+    << " | dd:" << ((unsigned)h.ncp.d_dst) << "] ";
+  o << " ver: " << ((unsigned)h.agg.ver) << " | bidx:" << h.agg.bmp_idx
+    << " | aidx:" << h.agg.agg_idx << " | mask:" << h.agg.mask
+    << " | offset:" << h.agg.offset;
+  o << " | data:" << vec2str(data, opt.ValuesPerPacket, 6) << '\n';
+  return o;
+}
 
 size_t NCL_PACKET_SIZE = sizeof(ncl_h) + (32 * sizeof(uint32_t));
 
@@ -111,18 +124,6 @@ void PrintData(uint32_t expo, uint32_t *v, size_t size, size_t n = 8,
   if (printSize)
     O << " (" << size << '/' << (size * sizeof(uint32_t)) << "B)";
   O << " | expo: " << expo << '\n';
-}
-
-std::string vec2str(uint32_t *v, size_t size, size_t n = 8) {
-  std::ostringstream oss;
-  for (auto i = 0; i < n; ++i) {
-    if (i == size)
-      break;
-    if (i > 0)
-      oss << ',';
-    oss << v[i];
-  }
-  return oss.str();
 }
 
 bool GenerateVector(uint32_t **p, size_t size, uint32_t value) {
@@ -220,7 +221,7 @@ void getIndexRangeForThread(uint32_t tid, uint32_t &lo, uint32_t &hi) {
   hi = std::min(lo + opt.ValuesPerThread, opt.Size);
 }
 
-void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
+void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             uint32_t *expo, uint32_t *data, size_t size,
             std::shared_future<void> sigstart) {
   sigstart.wait();
@@ -233,47 +234,37 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
   uint32_t start, end;
   getIndexRangeForThread(tid, start, end);
 
-  // thread(tid) << "starting version: " << (uint8_t)*version << "\n";
-
-  // Create NCL(+agg) messages into the window buffer
   uint32_t mask = 1 << (opt.Rank - 1);
-  uint16_t startingSlot = tid * opt.Window;
-  uint8_t startingVersion = *version;
-  uint8_t startingAggIdxOffset = startingVersion * opt.Slots;
+  uint16_t baseSlot = tid * opt.Window;
+  uint8_t version = *startingVersion;
+  uint8_t startingAggIdxOffset = version * opt.Slots;
 
-  memset(window, 0, sizeof(ncrt::ncl_h) * opt.Window);
-
-  uint32_t offset = start;
-  for (auto i = 0; i < opt.Window; ++i, offset += opt.ValuesPerPacket) {
-    // offset = start + i * opt.ValuesPerPacket;
-    window[i].ncp.h_src = opt.Rank;
-    window[i].ncp.d_dst = 1;
-    window[i].ncp.cid = 1;
-    // We do not need to bswap all these but lets just do it for now
-    window[i].agg.ver = *version;
-    window[i].agg.bmp_idx = htons(startingSlot + i);
-    window[i].agg.agg_idx = htons(startingSlot + i + startingAggIdxOffset);
-    window[i].agg.mask = htonl(mask);
-    window[i].agg.offset = htonl(offset);
-    window[i].agg.expo = htonl(*expo);
-  }
-
-  // Create iovec and mmsghdr buffers
-  iovec *iov = (iovec *)malloc(2 * opt.Window * sizeof(iovec));
-  mmsghdr *msg = (mmsghdr *)malloc(opt.Window * sizeof(mmsghdr));
+  auto *ncl = (ncrt::ncl_h *)malloc(opt.Window * sizeof(ncrt::ncl_h));
+  auto *iov = (iovec *)malloc(2 * opt.Window * sizeof(iovec));
+  auto *msg = (mmsghdr *)malloc(opt.Window * sizeof(mmsghdr));
+  memset(ncl, 0, sizeof(ncrt::ncl_h) * opt.Window);
   memset(iov, 0, 2 * opt.Window * sizeof(iovec));
   memset(msg, 0, opt.Window * sizeof(mmsghdr));
 
-  // Create opt.Window messages to send
-  auto dataOffset = 0;
+  uint32_t offset = start;
   auto dataLen = opt.ValuesPerPacket * sizeof(uint32_t);
   for (auto i = 0, v = 0; i < opt.Window; ++i, v += 2) {
-    iov[v].iov_base = &window[i];
+    // Create the NetCL messages
+    ncl[i].ncp.h_src = opt.Rank;
+    ncl[i].ncp.d_dst = 1;
+    ncl[i].ncp.cid = 1;
+    // do not need to bswap all these but lets just do it for now
+    ncl[i].agg.ver = version;
+    ncl[i].agg.bmp_idx = htons(baseSlot + i);
+    ncl[i].agg.agg_idx = htons(baseSlot + i + startingAggIdxOffset);
+    ncl[i].agg.mask = htonl(mask);
+    ncl[i].agg.offset = htonl(offset);
+    ncl[i].agg.expo = htonl(*expo);
+    // Pack the NetCL messages
+    iov[v].iov_base = &ncl[i];
     iov[v].iov_len = sizeof(ncrt::ncl_h);
-    iov[v + 1].iov_base = &data[dataOffset];
+    iov[v + 1].iov_base = &data[offset];
     iov[v + 1].iov_len = dataLen;
-
-    dataOffset += opt.ValuesPerPacket;
 
     msg[i].msg_hdr.msg_name = &device;
     msg[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
@@ -283,71 +274,58 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
     msg[i].msg_hdr.msg_controllen = 0;
     msg[i].msg_hdr.msg_flags = 0;
     msg[i].msg_len = 0;
+
+    offset += opt.ValuesPerPacket;
   }
+
   // Burst tx opt.Window message
   sendmmsg(soc, msg, opt.Window, 0);
 
-  size_t recvd = 0;
+  size_t totalReceived = 0;
 
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
-  // unsigned newVersion;
-  // unsigned newOffset;
-
   while (true) {
     // receive burst of opt.Window messages
-    int n = recvmmsg(soc, msg, opt.Window, 0, nullptr);
-    // thread(tid) << "received: " << n << '\n';
-    if (n == 0)
+    int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
+    if (received == 0)
       continue;
 
-    recvd += n;
-    if (recvd == opt.PacketsPerThread)
+    totalReceived += received;
+    if (totalReceived >= opt.PacketsPerThread) {
+      *startingVersion = 1 - version;
       break;
-
-    uint32_t newOffset = 0;
-    uint8_t newVersion = 0;
-
-    struct iovec iov[2];
-    struct msghdr m = {};
-    m.msg_name = &device;
-    m.msg_namelen = sizeof(device);
-    m.msg_iov = iov;
-    m.msg_iovlen = 2;
-    // m.msg_control = nullptr;
-    // m.msg_controllen = 0;
-    // m.msg_flags = 0;
-    // m.msg_len = 0;
-
-    for (auto i = 0; i < n; ++i) {
-      window[i].ncp.h_src = opt.Rank;
-      window[i].ncp.h_dst = 0;
-      window[i].ncp.d_src = 0;
-      window[i].ncp.d_dst = 1;
-      window[i].ncp.cid = 1;
-      window[i].ncp.act = 0;
-      window[i].ncp.act_arg = 0;
-      // newOffset = ntohl(ncl.agg.offset) + offsetBy;
-      newOffset = ntohl(window[i].agg.offset) + offsetBy;
-      newVersion = 1 - window[i].agg.ver;
-      window[i].agg.ver = newVersion;
-      window[i].agg.agg_idx =
-          htonl(newVersion ? ntohl(window[i].agg.agg_idx) + opt.Slots
-                           : ntohl(window[i].agg.agg_idx) - opt.Slots);
-      window[i].agg.mask = htonl(mask);
-      window[i].agg.offset = htonl(newOffset);
-      window[i].agg.expo = *expo;
-
-      iov[0].iov_base = &window[i];
-      iov[0].iov_len = sizeof(ncrt::ncl_h);
-      iov[1].iov_base = &data[newOffset];
-      iov[1].iov_len = dataLen;
-
-      int o = sendmsg(soc, &m, 0);
     }
 
-    if (recvd >= opt.PacketsPerThread)
-      *version = newVersion;
+    for (auto i = 0; i < received; ++i) {
+      auto *ih = (ncrt::ncl_h *)iov[i * 2].iov_base;
+      auto *id = (uint32_t *)iov[i * 2 + 1].iov_base;
+
+      ih->ncp.h_src = opt.Rank;
+      ih->ncp.h_dst = 0;
+      ih->ncp.d_src = 0;
+      ih->ncp.d_dst = 1;
+
+      version = 1 - ih->agg.ver;
+      offset = ntohl(ih->agg.offset) + offsetBy;
+
+      ih->agg.ver = version;
+      ih->agg.agg_idx = htons(version ? ntohs(ih->agg.agg_idx) + opt.Slots
+                                      : ntohs(ih->agg.agg_idx) - opt.Slots);
+      ih->agg.mask = htonl(mask);
+      ih->agg.offset = htonl(offset);
+      ih->agg.expo = htonl(*expo);
+
+      // next 32 values
+      iov[i * 2 + 1].iov_base = &data[offset];
+
+#ifndef RX_BURST
+      sendmsg(soc, &msg[i].msg_hdr, 0); // one by one
+#endif
+    }
+#ifdef RX_BURST
+    sendmmsg(soc, msg, received, 0);    // burst
+#endif
   }
 }
 

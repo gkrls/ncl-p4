@@ -128,6 +128,18 @@ public:
   }
 };
 
+inline std::string vec2str(uint32_t *v, size_t size, size_t n = 8) {
+  std::ostringstream oss;
+  for (auto i = 0; i < n; ++i) {
+    if (i == size)
+      break;
+    if (i > 0)
+      oss << ',';
+    oss << v[i];
+  }
+  return oss.str();
+}
+
 namespace detail {
 
 static inline uint32_t DefaultState = 123456789;
