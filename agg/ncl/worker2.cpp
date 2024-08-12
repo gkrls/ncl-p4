@@ -290,6 +290,7 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
   while (recvd < opt.PacketsPerThread) {
     // receive burst of opt.Window messages
     int n = recvmmsg(soc, msg, opt.Window, 0, nullptr);
+    thread(tid) << "received: " << n << '\n';
     if (n == 0)
       continue;
 
