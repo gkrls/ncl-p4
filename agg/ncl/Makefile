@@ -26,6 +26,7 @@ asic-compile: build_dir
 
 worker: worker.cpp worker_utils.h
 	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker.cpp -o worker
+	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker2.cpp -o worker2
 
 asic: asic-compile
 	tmux new -d -s switch
