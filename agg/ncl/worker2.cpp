@@ -277,8 +277,8 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
     msg[i].msg_len = 0;
   }
   // Burst tx opt.Window message
-  sendmmsg(soc, msg, opt.Window, 0);
-
+  int n = sendmmsg(soc, msg, opt.Window, 0);
+  thread(tid) << "send " << n << " messages\n";
 
   size_t recvd = 0;
 
@@ -301,13 +301,16 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
       newVersion = 1 - window[i].agg.ver;
 
       window[i].agg.ver = 1 - newVersion;
-      // window[i].agg.bmp_idx =
-      if (newVersion == 1) {
-        window[i].agg.agg_idx = htonl(ntohl(window[i].agg.agg_idx) + opt.Slots);
-      } else {
-        window[i].agg.agg_idx = htonl(ntohl(window[i].agg.agg_idx) - opt.Slots);
-      }
+      window[i].agg.agg_idx =
+          htonl(ntohl(newVersion ? window[i].agg.agg_idx + opt.Slots
+                                 : window[i].agg.agg_idx - opt.Slots));
+      //  : window[i].agg.agg_idx =
+      //        htonl(ntohl(window[i].agg.agg_idx) - opt.Slots);
+      window[i].agg.mask = mask;
       window[i].agg.offset = htonl(newOffset);
+      window[i].agg.expo = *expo;
+
+      msg->msg_hdr.msg_iov[1].iov_base = &data[newOffset];
       sendmmsg(soc, &msg[i], 1, 0);
     }
 

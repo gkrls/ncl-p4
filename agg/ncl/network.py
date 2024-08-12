@@ -53,7 +53,8 @@ net = NetworkAPI()
 net.setLogLevel('info')
 net.enableCli()
 
-P = f'allreduce-{C["active-workers"]}.ncl.device.1.p4'
+W = int(sys.argv['WORKERS']) if 'WORKERS' in sys.argv else C['active-workers']
+P = f'allreduce-{W}.ncl.device.1.p4'
 
 print()
 print("=============================================")
@@ -66,7 +67,10 @@ net.setCompiler(compilerClass=BF_P4C, sde=SDE, sde_install=SDE_INSTALL)
 net.addTofino(s, sde=SDE, sde_install=SDE_INSTALL, mac=C['device']['mac'], ip=C['device']['ip'])
 net.setP4Source(s, os.path.abspath(os.path.join(os.path.dirname(__file__), P)))
 
-for w in C['workers']:
+
+for i, w in enumerate(C['workers']):
+    if i == W:
+        break
     dport = T1Model.get_dport_from_fport(C['workers'][w]['port'], 0)
     net.addHost(w)
     net.addLink(w, s, port2=dport)

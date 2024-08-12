@@ -89,9 +89,9 @@ public:
     parser.add<popl::Switch>("", "perf", "run in performance mode", &Perf);
 
     parser.add<popl::Value<std::string>>("", "device-mac", "device MAC address",
-                                         "42:42:42:42:42:42", &DeviceMac);
+                                         "42:00:00:00:00:00", &DeviceMac);
     parser.add<popl::Value<std::string>>("", "device-ip", "device IPv4 address",
-                                         "42.42.42.42", &DeviceIp);
+                                         "42.0.0.0", &DeviceIp);
     parser.add<popl::Value<uint16_t>>("", "device-port", "device UDP port",
                                       4242, &DevicePort);
     parser.add<popl::Switch>("", "simd", "use SIMD whenever possible", &SIMD);
