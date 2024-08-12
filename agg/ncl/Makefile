@@ -24,7 +24,7 @@ asic-compile: build_dir
 	${SDE_INSTALL}/bin/bf-p4c -b tofino -o ${BUILD}/${P4NAME} ${P4SRC}
 
 
-worker: worker.cpp worker_utils.h
+worker: worker.cpp worker2.cpp worker_utils.h
 	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker.cpp -o worker
 	g++ -x c++ -g -std=c++17 -mavx2 -pthread worker2.cpp -o worker2
 
@@ -72,11 +72,11 @@ hpdc-6-servers-setup-pull:
 	ssh hpdc-gnode6 "cd ncl-p4 && git pull"
 
 
-hpdc-2-servers-cpp-worker:
+hpdc-2-servers-worker:
 	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
 	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
 
-hpdc-4-servers-cpp-worker:
+hpdc-4-servers-worker:
 	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
 	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
 	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make worker"
