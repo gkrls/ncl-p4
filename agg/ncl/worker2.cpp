@@ -216,119 +216,9 @@ void getIndexRangeForThread(uint32_t tid, uint32_t &lo, uint32_t &hi) {
   hi = std::min(lo + opt.ValuesPerThread, opt.Size);
 }
 
-int sendNclMessage(uint16_t tid, int soc, sockaddr_in &addr, ncrt::ncl_h &h,
-                   uint32_t *data) {
-  struct iovec iov[2];
-  iov[0].iov_base = &h;
-  iov[0].iov_len = sizeof(ncrt::ncl_h);
-  iov[1].iov_base = data;
-  iov[1].iov_len = opt.ValuesPerPacket * sizeof(uint32_t);
-
-  struct msghdr msg = {};
-  msg.msg_name = &addr;
-  msg.msg_namelen = sizeof(sockaddr_in);
-  msg.msg_iov = iov;
-  msg.msg_iovlen = 2;
-  return sendmsg(soc, &msg, 0);
-}
-
-int sendNclMessageBurst(uint16_t tid, int soc, sockaddr_in &addr, iovec *iov,
-                        mmsghdr *msg, ncrt::ncl_h *h, uint32_t *data, uint32_t burst) {
-
-  auto dataOffset = 0;
-  auto dataLen = opt.ValuesPerPacket * sizeof(uint32_t);
-  for (auto i = 0, v = 0; i < burst; ++i, v += 2) {
-    iov[v].iov_base = &h[i];
-    iov[v].iov_len = sizeof(ncrt::ncl_h);
-    iov[v + 1].iov_base = data + dataOffset;
-    iov[v + 1].iov_len = dataLen;
-    dataOffset += opt.ValuesPerPacket;
-
-    msg[i].msg_hdr.msg_name = &addr;
-    msg[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
-    msg[i].msg_hdr.msg_iov = &iov[v];
-    msg[i].msg_hdr.msg_iovlen = 2;
-    msg[i].msg_hdr.msg_control = nullptr;
-    msg[i].msg_hdr.msg_controllen = 0;
-    msg[i].msg_hdr.msg_flags = 0;
-    msg[i].msg_len = 0;
-  }
-
-  return sendmmsg(soc, msg, burst, 0);
-}
-
-int sendNclMessageDbg(uint16_t tid, int soc, sockaddr_in &addr, ncrt::ncl_h &h,
-                      uint32_t *data) {
-  struct iovec iov[2];
-  iov[0].iov_base = &h;
-  iov[0].iov_len = sizeof(ncrt::ncl_h);
-  iov[1].iov_base = data;
-  iov[1].iov_len = opt.ValuesPerPacket * sizeof(uint32_t);
-
-  struct msghdr msg = {};
-  msg.msg_name = &addr;
-  msg.msg_namelen = sizeof(sockaddr_in);
-  msg.msg_iov = iov;
-  msg.msg_iovlen = 2;
-
-  std::ostringstream ss;
-  thread(tid, ss) << "O.<" << ntohl(h.agg.offset) << ',' << (unsigned)h.agg.ver
-                  << ',' << ntohs(h.agg.bmp_idx) << ',' << ntohs(h.agg.agg_idx)
-                  << "> " << std::string(55 - ss.str().size(), ' ') << ':'
-                  << vec2str(data, opt.ValuesPerPacket)
-                  << " expo: " << h.agg.expo << '\n';
-  std::cout << ss.str();
-  return sendmsg(soc, &msg, 0);
-}
-
-int recvNclMessage(uint16_t tid, int soc, sockaddr_in &addr, ncrt::ncl_h &h,
-                   uint32_t *data) {
-  struct iovec iov[2];
-  iov[0].iov_base = &h;
-  iov[0].iov_len = sizeof(ncrt::ncl_h);
-  iov[1].iov_base = data;
-  iov[1].iov_len = opt.ValuesPerPacket * sizeof(uint32_t);
-
-  struct msghdr msg = {};
-  msg.msg_name = &addr;
-  msg.msg_namelen = sizeof(sockaddr_in);
-  msg.msg_iov = iov;
-  msg.msg_iovlen = 2;
-
-  return recvmsg(soc, &msg, 0);
-}
-
-int recvNclMessageDbg(uint16_t tid, int soc, sockaddr_in &addr, ncrt::ncl_h &h,
-                      uint32_t *data) {
-  struct iovec iov[2];
-  iov[0].iov_base = &h;
-  iov[0].iov_len = sizeof(ncrt::ncl_h);
-  iov[1].iov_base = data;
-  iov[1].iov_len = opt.ValuesPerPacket * sizeof(uint32_t);
-
-  struct msghdr msg = {};
-  msg.msg_name = &addr;
-  msg.msg_namelen = sizeof(sockaddr_in);
-  msg.msg_iov = iov;
-  msg.msg_iovlen = 2;
-
-  auto sz = recvmsg(soc, &msg, 0);
-  std::ostringstream ss;
-  thread(tid, ss) << "I.<" << ntohl(h.agg.offset) << ',' << (unsigned)h.agg.ver
-                  << ',' << ntohs(h.agg.bmp_idx) << ',' << ntohs(h.agg.agg_idx)
-                  << "> " << std::string(55 - ss.str().size(), ' ') << ':'
-                  << vec2str(data, opt.ValuesPerPacket)
-                  << " expo: " << h.agg.expo << '\n';
-  std::cout << ss.str();
-  return sz;
-}
-
-using sendfn = int (*)(uint16_t, int, sockaddr_in &, ncrt::ncl_h &, uint32_t *);
-using recvfn = int (*)(uint16_t, int, sockaddr_in &, ncrt::ncl_h &, uint32_t *);
-
 void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
-            uint32_t *expo, uint32_t *data, size_t size, sendfn send,
-            recvfn recv, std::shared_future<void> sigstart) {
+            uint32_t *expo, uint32_t *data, size_t size,
+            std::shared_future<void> sigstart) {
   sigstart.wait();
 
   sockaddr_in device;
@@ -362,46 +252,66 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *window, uint8_t *version,
   }
 
   // Create iovec and mmsghdr buffers
-  iovec *iov = (iovec *) malloc(2 * opt.Window * sizeof(iovec));
-  mmsghdr *msg = (mmsghdr *) malloc(opt.Window * sizeof(mmsghdr));
+  iovec *iov = (iovec *)malloc(2 * opt.Window * sizeof(iovec));
+  mmsghdr *msg = (mmsghdr *)malloc(opt.Window * sizeof(mmsghdr));
   memset(iov, 0, 2 * opt.Window * sizeof(iovec));
   memset(msg, 0, opt.Window * sizeof(mmsghdr));
 
-  // Send opt.Window messages
-  sendNclMessageBurst(tid, soc, device, iov, msg, window, data, opt.Window);
+  // Create opt.Window messages to send
+  auto dataOffset = 0;
+  auto dataLen = opt.ValuesPerPacket * sizeof(uint32_t);
+  for (auto i = 0, v = 0; i < opt.Window; ++i, v += 2) {
+    iov[v].iov_base = &window[i];
+    iov[v].iov_len = sizeof(ncrt::ncl_h);
+    iov[v + 1].iov_base = data + dataOffset;
+    iov[v + 1].iov_len = dataLen;
+    dataOffset += opt.ValuesPerPacket;
 
-  ncrt::ncl_h &oh = window[0], &ih = window[1];
-  sockaddr_in iaddr;
-  uint32_t *in_data =
-      (uint32_t *)std::malloc(opt.ValuesPerPacket * sizeof(uint32_t));
+    msg[i].msg_hdr.msg_name = &device;
+    msg[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
+    msg[i].msg_hdr.msg_iov = &iov[v];
+    msg[i].msg_hdr.msg_iovlen = 2;
+    msg[i].msg_hdr.msg_control = nullptr;
+    msg[i].msg_hdr.msg_controllen = 0;
+    msg[i].msg_hdr.msg_flags = 0;
+    msg[i].msg_len = 0;
+  }
+  // Burst tx opt.Window message
+  sendmmsg(soc, msg, opt.Window, 0);
+
 
   size_t recvd = 0;
+
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
-  while (true) {
-    recv(tid, soc, iaddr, ih, in_data);
-    recvd += opt.ValuesPerPacket;
+  unsigned newVersion;
+  unsigned newOffset;
 
-    if (recvd >= opt.ValuesPerThread) {
-      *version = 1 - ih.agg.ver;
-      break;
-    }
-
-    offset = ntohl(ih.agg.offset) + offsetBy;
-    if (offset >= end) {
-      // this is possible only if e.g. we receive packets
-      // with high idx within the window, before packets
-      // with lower idx, so the new offset we compute
-      // goes out of bounds on this threads idx range
+  while (recvd < opt.PacketsPerThread) {
+    // receive burst of opt.Window messages
+    int n = recvmmsg(soc, msg, opt.Window, 0, nullptr);
+    if (n == 0)
       continue;
+
+    recvd += n;
+
+    for (auto i = 0; i < n; ++i) {
+      newOffset = ntohl(window[i].agg.offset) + offsetBy;
+      newVersion = 1 - window[i].agg.ver;
+
+      window[i].agg.ver = 1 - newVersion;
+      // window[i].agg.bmp_idx =
+      if (newVersion == 1) {
+        window[i].agg.agg_idx = htonl(ntohl(window[i].agg.agg_idx) + opt.Slots);
+      } else {
+        window[i].agg.agg_idx = htonl(ntohl(window[i].agg.agg_idx) - opt.Slots);
+      }
+      window[i].agg.offset = htonl(newOffset);
+      sendmmsg(soc, &msg[i], 1, 0);
     }
 
-    oh.agg.ver = 1 - ih.agg.ver;
-    oh.agg.bmp_idx = ih.agg.bmp_idx;
-    oh.agg.agg_idx =
-        htonl(ntohl(ih.agg.bmp_idx) + (1 - ih.agg.ver) * opt.Slots);
-    oh.agg.offset = htonl(offset);
-    send(tid, soc, device, oh, &data[offset]);
+    if (recvd >= opt.PacketsPerThread)
+      *version = 1 - newVersion;
   }
 }
 
@@ -420,10 +330,8 @@ uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows,
   std::promise<void> start;
   auto sigstart = start.get_future().share();
   for (auto tid = 0; tid < opt.Threads; ++tid)
-    threads.emplace_back(
-        Worker, tid, sockets[tid], &windows[tid * opt.Window], &versions[tid],
-        expo, data, size, opt.Perf ? sendNclMessage : sendNclMessageDbg,
-        opt.Perf ? recvNclMessage : recvNclMessageDbg, sigstart);
+    threads.emplace_back(Worker, tid, sockets[tid], &windows[tid * opt.Window],
+                         &versions[tid], expo, data, size, sigstart);
 
   // Start the threads
   // Normally we would reuse threads so lets not time thread creation
