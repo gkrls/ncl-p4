@@ -290,56 +290,6 @@ control allreduce ( inout headers_t H,
 
 
 
-control networking( inout headers_t H,
-                    inout ingress_metadata_t M,
-                    in ingress_intrinsic_metadata_t IM,
-                    in ingress_intrinsic_metadata_from_parser_t PIM,
-                    inout ingress_intrinsic_metadata_for_deparser_t DIM,
-                    inout ingress_intrinsic_metadata_for_tm_t TIM )
-{
-  action send_to_port(PortId_t port) {
-    DIM.drop_ctl[0:0] = 0x0;
-    TIM.ucast_egress_port = port;
-  }
-
-  action flood() {
-    DIM.drop_ctl[0:0] = 0x0;
-    TIM.mcast_grp_a = FLOOD_MULTICAST_GROUP_ID;
-    TIM.level1_exclusion_id = (bit<16>) IM.ingress_port;
-  }
-
-  table forwarding_table {
-    key = {H.eth.dst_addr: exact;}
-    actions = { send_to_port; flood; }
-    const default_action = flood;
-    const size = FORWARDING_TABLE_CAPACITY;
-  }
-
-  action arp_resolve(mac_addr_t mac) {
-    H.arp.opcode = ARP_RES;
-    H.arp_ip4.dst_hw_addr = H.arp_ip4.src_hw_addr;
-    H.arp_ip4.src_hw_addr = mac;
-    ip4_addr_t tmp = H.arp_ip4.dst_proto_addr;
-    H.arp_ip4.dst_proto_addr = H.arp_ip4.src_proto_addr;
-    H.arp_ip4.src_proto_addr = tmp;
-    H.eth.dst_addr = H.eth.src_addr;
-    H.eth.src_addr = mac;
-  }
-
-  table arp_table {
-    key = { H.arp_ip4.dst_proto_addr: exact; }
-    actions = { arp_resolve; NoAction; }
-    const default_action = NoAction;
-    const size = ARP_TABLE_CAPACITY;
-  }
-
-  apply {
-    TIM.bypass_egress = 0;
-    if (H.arp_ip4.isValid() && H.arp.opcode == ARP_REQ)
-      arp_table.apply();
-    forwarding_table.apply();
-  }
-}
 
 control ingress( inout headers_t H,
                  inout ingress_metadata_t M,
