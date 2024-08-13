@@ -20,11 +20,13 @@ private:
 public:
   bool Help;
   bool Perf;
+  bool Interactive;
   uint32_t Threads;
   std::string IP;
   uint16_t Port;
   std::string ServerIp;
   uint16_t ServerPort;
+  uint16_t ServerPorts;
   std::string DeviceMac;
   std::string DeviceIp;
   uint16_t DevicePort;
@@ -58,6 +60,9 @@ public:
                                          "42.0.0.4", &ServerIp);
     parser.add<popl::Value<uint16_t>>("", "server-port", "server UDP port",
                                       4242, &ServerPort);
+    parser.add<popl::Value<uint16_t>>("", "server-ports", "number of server ports",
+                                  1, &ServerPorts);
+    parser.add<popl::Switch>("i", "interactive", "run in interactive mode", &Interactive);
   }
 
   void parse(int argc, char **argv) {

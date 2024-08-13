@@ -75,11 +75,85 @@ std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
   return o;
 }
 
+void interactive_client(uint32_t tid, std::string serverAddr,
+                        uint16_t serverPort) {
+  sockaddr_in server;
+  server.sin_family = AF_INET;
+  server.sin_addr.s_addr = inet_addr(serverAddr.c_str());
+  server.sin_port = htons(serverPort);
+
+  log(tid) << ' ' << opt.IP << '.' << opt.Port
+           << " started in interactive mode\n";
+
+  sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
+  addr.sin_port = htons(opt.Port + tid);
+
+  auto soc = socket(AF_INET, SOCK_DGRAM, 0);
+  if (soc < 0) {
+    log(tid) << "error: ocket creation failed: " << strerror(errno)
+             << std::endl;
+    return;
+  }
+  int reuse = 1;
+  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+  if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
+    log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
+             << '\n';
+    return;
+  }
+
+  std::string line;
+  log(tid)
+      << "Enter keys (look at data.txt for inspiration) or type 'q' to quit:"
+      << std::endl;
+
+  cache_h p = {}, q = {};
+
+  sockaddr_in incaddrr;
+  socklen_t inclen = sizeof(sockaddr_in);
+
+  while (true) {
+    // Read a line from standard input
+    std::cout << "> ";
+    std::getline(std::cin, line);
+
+    // Check if the line is "q"
+    if (line == "q") {
+      break;
+    }
+
+    if (line.size() > 8) {
+      std::cout << "err: input too long\n";
+      continue;
+    }
+
+    uint64_t k = 0;
+    strncpy((char *)&k, line.data(), line.size());
+
+    createGetRequest(p, k);
+    sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
+    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    if (q.op == cache_op::GET_RQ)
+      std::cout << "  key not found\n";
+    else {
+      q.v[0] = ntohl(q.v[0]);
+      q.v[1] = ntohl(q.v[1]);
+      q.v[2] = ntohl(q.v[2]);
+      q.v[3] = ntohl(q.v[3]);
+      char val[17] = {0};
+      strncpy(val, (char *)&q.v, 16);
+      std::cout << "  key found with value: " << val << '\n';
+    }
+  }
+
+  log(tid) << "finished\n";
+}
+
 void client(uint32_t tid, std::vector<uint64_t> const &keys, statistics &stats,
             std::shared_future<void> sigstart) {
   sigstart.wait();
-
-  log(tid) << ' ' << opt.IP << '.' << opt.Port << " started... \n";
 
   sockaddr_in server;
   server.sin_family = AF_INET;
@@ -119,7 +193,8 @@ void client(uint32_t tid, std::vector<uint64_t> const &keys, statistics &stats,
     q.v[1] = ntohl(q.v[1]);
     q.v[2] = ntohl(q.v[2]);
     q.v[3] = ntohl(q.v[3]);
-    log(tid) << "received op: " << (uint16_t) q.op << " - " << (char*) q.v << '\n';
+    log(tid) << "received op: " << (uint16_t)q.op << " - " << (char *)q.v
+             << '\n';
     // log(tid) << "received op:" << (uint16_t) q.op << " - " << ntohl(q.v[0])
     //          << ", " << ntohl(q.v[1]) << "," << ntohl(q.v[2]) << ","
     //          << ntohl(q.v[3]) << '\n';
@@ -129,28 +204,33 @@ void client(uint32_t tid, std::vector<uint64_t> const &keys, statistics &stats,
 int main(int argc, char **argv) {
   opt.parse(argc, argv);
 
-  std::vector<std::thread> threads;
-  std::vector<statistics> stats;
-  std::promise<void> start;
-  std::shared_future<void> sigstart = start.get_future().share();
+  if (opt.Interactive) {
+    interactive_client(0, opt.ServerIp, opt.ServerPort);
+  } else {
+    std::vector<std::thread> threads;
+    std::vector<statistics> stats;
+    std::promise<void> start;
+    std::shared_future<void> sigstart = start.get_future().share();
 
-  std::vector<uint64_t> keys(3, 0);
-  strncpy((char *)&keys.data()[0], "hello", 5);
-  strncpy((char *)&keys.data()[1], "netcl", 5);
-  strncpy((char *)&keys.data()[2], "nope", 4);
+    std::vector<uint64_t> keys(3, 0);
+    strncpy((char *)&keys.data()[0], "hello", 5);
+    strncpy((char *)&keys.data()[1], "netcl", 5);
+    strncpy((char *)&keys.data()[2], "nope", 4);
 
-  for (auto tid = 0; tid < opt.Threads; ++tid)
-    threads.emplace_back(client, tid, keys, std::ref(stats[tid]), sigstart);
+    for (auto tid = 0; tid < opt.Threads; ++tid)
+      threads.emplace_back(client, tid, keys, std::ref(stats[tid]), sigstart);
 
-  std::cout << "info: starting " << opt.Threads << " client threads\n";
-  start.set_value();
-  for (auto &t : threads)
-    if (t.joinable())
-      t.join();
+    std::cout << "info: starting " << opt.Threads << " client threads\n";
+    start.set_value();
+    for (auto &t : threads)
+      if (t.joinable())
+        t.join();
 
-  for (auto i = 0; i < stats.size(); ++i) {
-    std::cout << "Statistics for thread '" << i << "'\n";
-    stats.at(i).print(std::cout) << '\n';
+    for (auto i = 0; i < stats.size(); ++i) {
+      std::cout << "Statistics for thread '" << i << "'\n";
+      stats.at(i).print(std::cout) << '\n';
+    }
   }
+
   // We will just dispath -j client threads and wait them
 }

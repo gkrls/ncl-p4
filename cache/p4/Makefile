@@ -21,10 +21,10 @@ mininet-network: build_dir
 asic-compile: build_dir
 	${SDE_INSTALL}/bin/bf-p4c -b tofino -o ${BUILD}/${P4NAME} ${P4SRC}
 
-client: client.cpp
+client: client.cpp client_utils.h
 	g++ client.cpp -o client
 
-server: server.cpp
+server: server.cpp server_utils.h
 	g++ -g server.cpp -o server
 
 clean:

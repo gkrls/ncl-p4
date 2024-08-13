@@ -4,6 +4,7 @@
 #include "popl.h" // https://github.com/badaix/popl
 #include <cstdint>
 #include <iostream>
+#include <mutex>
 #include <ostream>
 #include <string>
 
@@ -11,6 +12,28 @@ inline void exitWithErrorMessage(const std::string &msg) {
   std::cout << "error: " << msg << '\n';
   exit(1);
 }
+
+class log {
+public:
+  log(std::ostream &o = std::cout) : o(o) { buffer << "[server] "; }
+  log(uint32_t tid, std::ostream &o = std::cout) : o(o) {
+    buffer << "[server." << tid << "] ";
+  }
+  ~log() {
+    std::lock_guard<std::mutex> guard(this->cout_mutex);
+    o << buffer.str();
+  }
+
+  template <typename T> log &operator<<(const T &value) {
+    buffer << value;
+    return *this;
+  }
+
+private:
+  static inline std::mutex cout_mutex;
+  std::ostream &o;
+  std::ostringstream buffer;
+};
 
 struct options {
 
@@ -65,7 +88,6 @@ public:
 
     if (Threads == 0)
       exitWithErrorMessage("-j/--threads must be > 0");
-
   }
 
   int help(std::ostream &o = std::cout) {

@@ -75,10 +75,10 @@ void createGetRequest(cache_h &c, uint64_t key) {
 
 static options opt;
 
-std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
-  std::cout << '[' << "server." << tid << "] ";
-  return o;
-}
+// std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
+//   std::cout << '[' << "server." << tid << "] ";
+//   return o;
+// }
 
 uint64_t stringToUInt64(const std::string &str) {
   uint64_t result = 0;
@@ -90,10 +90,8 @@ uint64_t stringToUInt64(const std::string &str) {
 
 void server(uint32_t tid,
             std::unordered_map<uint64_t, std::array<uint32_t, 4>> const &kvs,
-            statistics &stats, std::shared_future<void> sigstart) {
+            std::shared_future<void> sigstart) {
   sigstart.wait();
-
-  log(tid) << "Started...\n";
 
   sockaddr_in addr;
   addr.sin_family = AF_INET;
@@ -102,7 +100,7 @@ void server(uint32_t tid,
 
   auto soc = socket(AF_INET, SOCK_DGRAM, 0);
   if (soc < 0) {
-    std::cerr << "Socket creation failed: " << strerror(errno) << std::endl;
+    log(tid) << "error: socket creation failed: " << strerror(errno) << '\n';
     return;
   }
 
@@ -113,12 +111,15 @@ void server(uint32_t tid,
     return;
   }
 
-  log(tid) << "Listening on " << opt.IP << '.' << opt.Port << '\n';
+  log(tid) << "Listening on " << opt.IP << '.' << opt.Port + tid << '\n';
 
-  cache_h p;
 
   while (true) {
-    int recvd = recv(soc, &p, CACHE_HEADER_SIZE, 0);
+    sockaddr_in inaddr;
+    socklen_t inlen = sizeof(sockaddr_in);
+
+    cache_h p = {};
+    int recvd = recvfrom(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr*) &inaddr, &inlen);
     if (recvd < 0) {
       log(tid) << "recv error\n";
     }
@@ -126,6 +127,20 @@ void server(uint32_t tid,
 
     log(tid) << "received op:" << (uint16_t)p.op << " key: " << p.key << " : "
              << (char *)&p.key << '\n';
+
+    if (auto It = kvs.find(p.key); It != kvs.end()) {
+      log(tid) << "key found\n";
+      p.op = cache_op::GET_RS;
+      p.mask = htonl((0xffffffff << 4) - 1); // just set all ones for now
+      p.v[0] = htonl(It->second.at(0));
+      p.v[1] = htonl(It->second.at(1));
+      p.v[2] = htonl(It->second.at(2));
+      p.v[3] = htonl(It->second.at(3));
+    } else {
+      log(tid) << "key not found\n";
+    }
+
+    sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr*) &inaddr, inlen);
   }
 }
 
@@ -148,17 +163,11 @@ void loadData(const char *f,
     // Extract the key and value strings
     std::string keyStr = line.substr(0, pos);
     std::string valueStr = line.substr(pos + 1);
-    std::cout << keyStr << " : " << valueStr << " " << keyStr.size() << "/"
-              << valueStr.size() << '\n';
-
-    // Create and initialize the key and value arrays
-    // uint64_t key = 0;
 
     uint64_t key = 0;
     std::array<uint32_t, 4> value = {0, 0, 0, 0};
 
-
-    std::strncpy((char *) &key, keyStr.c_str(), keyStr.size());
+    std::strncpy((char *)&key, keyStr.c_str(), keyStr.size());
     std::strncpy((char *)value.data(), valueStr.c_str(), valueStr.size());
 
     kvs[key] = std::move(value);
@@ -178,9 +187,10 @@ int main(int argc, char **argv) {
   for (auto const &e : kvs) {
     char key[9] = {0};
     memccpy(&key, (char *)&e.first, 1, 8);
-    std::cout << std::setw(8) << key  << " :";
+    std::cout << std::setw(8) << key << " :";
     std::cout << " " << std::string((char *)&e.second) << '\n';
   }
+  std::cout << "################\n\n";
 
   std::vector<std::thread> threads;
   std::vector<statistics> stats;
@@ -188,17 +198,11 @@ int main(int argc, char **argv) {
   std::shared_future<void> sigstart = start.get_future().share();
 
   for (auto tid = 0; tid < opt.Threads; ++tid)
-    threads.emplace_back(server, tid, kvs, std::ref(stats[tid]), sigstart);
+    threads.emplace_back(server, tid, kvs, sigstart);
 
   std::cout << "info: starting " << opt.Threads << " server threads\n";
   start.set_value();
   for (auto &t : threads)
     if (t.joinable())
       t.join();
-
-  for (auto i = 0; i < stats.size(); ++i) {
-    std::cout << "Statistics for thread '" << i << "'\n";
-    stats.at(i).print(std::cout) << '\n';
-  }
-  // We will just dispath -j client threads and wait them
 }
