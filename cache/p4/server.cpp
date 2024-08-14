@@ -75,11 +75,6 @@ void createGetRequest(cache_h &c, uint64_t key) {
 
 static options opt;
 
-// std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
-//   std::cout << '[' << "server." << tid << "] ";
-//   return o;
-// }
-
 uint64_t stringToUInt64(const std::string &str) {
   uint64_t result = 0;
   for (size_t i = 0; i < str.size(); ++i) {
@@ -144,7 +139,7 @@ void server(uint32_t tid,
   }
 }
 
-void loadData(const char *f,
+void loadKvs(const char *f,
               std::unordered_map<uint64_t, std::array<uint32_t, 4>> &kvs) {
   std::ifstream file(f);
 
@@ -180,7 +175,7 @@ int main(int argc, char **argv) {
   opt.parse(argc, argv);
 
   std::unordered_map<uint64_t, std::array<uint32_t, 4>> kvs;
-  loadData("data.txt", kvs);
+  loadKvs("data.txt", kvs);
 
   std::cout << "### kv-store ###\n";
   uint32_t i = 0;

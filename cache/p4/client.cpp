@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <arpa/inet.h>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <endian.h>
@@ -7,6 +9,7 @@
 #include <istream>
 #include <netinet/in.h>
 #include <ostream>
+#include <random>
 #include <sys/socket.h>
 
 #include "client_utils.h"
@@ -33,11 +36,11 @@ struct __attribute__((packed)) cache_h {
 };
 
 struct statistics {
-  uint32_t numRequests;
-  uint64_t totalTime;
+  uint32_t queries;
+  uint64_t duration;
   std::ostream &print(std::ostream &o = std::cout) {
-    o << "numRequests: " << numRequests << '\n';
-    o << "  totalTime: " << totalTime << '\n';
+    o << "numqueries: " << queries << '\n';
+    o << "  duration: " << duration << '\n';
     return o;
   }
 };
@@ -151,7 +154,8 @@ void interactive_client(uint32_t tid, std::string serverAddr,
   log(tid) << "finished\n";
 }
 
-void client(uint32_t tid, std::vector<uint64_t> const &keys, statistics &stats,
+void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
+            std::vector<uint64_t> const &keys, statistics *stats,
             std::shared_future<void> sigstart) {
   sigstart.wait();
 
@@ -181,24 +185,67 @@ void client(uint32_t tid, std::vector<uint64_t> const &keys, statistics &stats,
 
   sockaddr_in incaddrr;
   socklen_t inclen = sizeof(sockaddr_in);
-  cache_h p = {};
-  cache_h q = {};
+  cache_h p;
+  cache_h q;
+
+  auto tStart = std::chrono::high_resolution_clock::now();
   for (auto &k : keys) {
     createGetRequest(p, k);
-    sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
+    int sent = sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+                      sizeof(server));
+#ifdef DEBUG
+    log(tid) << "query key: " << k << '\n';
+#endif
     int recvd =
         recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+#ifdef DEBUG
     log(tid) << "received: " << recvd << "bytes\n";
+#endif
     q.v[0] = ntohl(q.v[0]);
     q.v[1] = ntohl(q.v[1]);
     q.v[2] = ntohl(q.v[2]);
     q.v[3] = ntohl(q.v[3]);
-    log(tid) << "received op: " << (uint16_t)q.op << " - " << (char *)q.v
-             << '\n';
-    // log(tid) << "received op:" << (uint16_t) q.op << " - " << ntohl(q.v[0])
-    //          << ", " << ntohl(q.v[1]) << "," << ntohl(q.v[2]) << ","
-    //          << ntohl(q.v[3]) << '\n';
+
+#ifdef DEBUG
+    uint64_t keyin = q.key;
+    char key[9];
+    char val[17];
+    memset(key, 0, 9);
+    memset(val, 0, 17);
+    strncpy(key, (char *)&keyin, 8);
+    strncpy(val, (char *)&q.v, 16);
+    log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.op
+             << " - key: " << keyin << '/' << key << ", val: " << val << '\n';
+#endif
   }
+  auto tEnd = std::chrono::high_resolution_clock::now();
+
+  if (stats) {
+    stats->duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart)
+            .count();
+    stats->queries = keys.size();
+  }
+}
+
+void loadKeys(const char *f, std::vector<uint64_t> &keys) {
+  std::ifstream file(f);
+
+  if (!file) {
+    std::cerr << "Could not open the file!" << std::endl;
+    return;
+  }
+  std::string line;
+  while (std::getline(file, line)) {
+    std::size_t pos = line.find_first_of('=');
+    if (pos == std::string::npos)
+      continue; // Skip lines without '='
+    std::string keyStr = line.substr(0, pos);
+    uint64_t key = 0;
+    std::strncpy((char *)&key, keyStr.c_str(), keyStr.size());
+    keys.push_back(key);
+  }
+  file.close();
 }
 
 int main(int argc, char **argv) {
@@ -207,18 +254,38 @@ int main(int argc, char **argv) {
   if (opt.Interactive) {
     interactive_client(0, opt.ServerIp, opt.ServerPort);
   } else {
+
+    std::vector<uint64_t> keys;
+    loadKeys("data.txt", keys);
+
+    std::vector<std::vector<uint64_t>> threadKeys(opt.Threads);
+
+    for (size_t i = 0; i < opt.Threads; ++i) {
+
+      threadKeys[i].reserve(keys.size() * opt.Multiplier);
+
+      std::default_random_engine rng(opt.Seed + i);
+
+      for (auto j = 0; j < opt.Multiplier; ++j) {
+        std::shuffle(keys.begin(), keys.end(), rng);
+        threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
+      }
+
+      for (auto &k : threadKeys[i]) {
+        std::cout << k << '-';
+      }
+      std::cout << "###############\n";
+    }
+
     std::vector<std::thread> threads;
     std::vector<statistics> stats;
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
-
-    std::vector<uint64_t> keys(3, 0);
-    strncpy((char *)&keys.data()[0], "hello", 5);
-    strncpy((char *)&keys.data()[1], "netcl", 5);
-    strncpy((char *)&keys.data()[2], "nope", 4);
-
-    for (auto tid = 0; tid < opt.Threads; ++tid)
-      threads.emplace_back(client, tid, keys, std::ref(stats[tid]), sigstart);
+    for (auto tid = 0; tid < opt.Threads; ++tid) {
+      auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
+      threads.emplace_back(client, tid, opt.ServerIp, serverPort,
+                           threadKeys[tid], &stats.data()[tid], sigstart);
+    }
 
     std::cout << "info: starting " << opt.Threads << " client threads\n";
     start.set_value();
@@ -231,6 +298,4 @@ int main(int argc, char **argv) {
       stats.at(i).print(std::cout) << '\n';
     }
   }
-
-  // We will just dispath -j client threads and wait them
 }

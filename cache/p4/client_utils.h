@@ -27,9 +27,11 @@ public:
   std::string ServerIp;
   uint16_t ServerPort;
   uint16_t ServerPorts;
+  uint32_t Multiplier;
   std::string DeviceMac;
   std::string DeviceIp;
   uint16_t DevicePort;
+  uint32_t Seed;
 
 #if defined(__AVX2__)
   bool AVX2Available = true;
@@ -60,9 +62,14 @@ public:
                                          "42.0.0.4", &ServerIp);
     parser.add<popl::Value<uint16_t>>("", "server-port", "server UDP port",
                                       4242, &ServerPort);
-    parser.add<popl::Value<uint16_t>>("", "server-ports", "number of server ports",
-                                  1, &ServerPorts);
-    parser.add<popl::Switch>("i", "interactive", "run in interactive mode", &Interactive);
+    parser.add<popl::Value<uint16_t>>(
+        "", "server-ports", "number of server ports", 1, &ServerPorts);
+    parser.add<popl::Value<uint32_t>>(
+        "m", "multiplier", "multiply the number of queries per thread", 1,
+        &Multiplier);
+    parser.add<popl::Value<uint32_t>>("", "seed", "set a seed", 1234321, &Seed);
+    parser.add<popl::Switch>("i", "interactive", "run in interactive mode",
+                             &Interactive);
   }
 
   void parse(int argc, char **argv) {
@@ -70,7 +77,8 @@ public:
 
     if (Threads == 0)
       exitWithErrorMessage("-j/--threads must be > 0");
-
+    if (Multiplier == 0)
+      exitWithErrorMessage("--multiplier must be > 0");
   }
 
   int help(std::ostream &o = std::cout) {

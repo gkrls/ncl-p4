@@ -1,9 +1,9 @@
-
-
 from netaddr import IPAddress, EUI
 import json
 import os
 
+# Percentage of keys in data.txt that will be in the cache
+CACHE=20
 
 SWITCH = {'name': "s1", 'mac': "42:00:00:00:00:00", 'ip': "42.0.0.0"}
 HOSTS = {
@@ -64,16 +64,8 @@ for h in HOSTS:
 
 Cache = IN.cache
 
-cache_entries = {
-    "hello": "world",
-    "vu": "amsterdam",
-    "netcl": "is awesome"
-}
-
-
 def str_to_int(seq, _m=str.maketrans('ACGT', '0123')):
     return int(seq.translate(_m), 4)
-
 
 def encode_str_key(k):
     b = k.encode('utf-8')
@@ -83,7 +75,7 @@ def encode_str_key(k):
 
 
 print("=========================")
-print("CACHE INFO")
+print("CACHE")
 print("=========================")
 
 
@@ -92,10 +84,26 @@ def is_bit_set(value, i):
     return (value & (1 << i)) != 0
 
 
+cache_entries = {}
+num_in_cache = 0
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) as f:
+    lines = f.read().splitlines()
+    num_in_cache = round(CACHE / 100 * len(lines))
+
+    print(f"\nWill insert {CACHE}% of keys in data.txt ({num_in_cache} keys) in the cache!!\n")
+
+    for (i, l) in enumerate(lines):
+        if i == num_in_cache:
+            break
+        kv = l.strip().split('=', 1)
+        cache_entries[kv[0]] = kv[1]
+
+
+
 print("Inserting cache entries:")
 for i, (k, v) in enumerate(cache_entries.items()):
     k_enc = encode_str_key(k)
-    val_bytes = len(bytes(v, 'utf-8')) 
+    val_bytes = len(bytes(v, 'utf-8'))
     val_words = len(bytes(v, 'utf-8')) // 4 + \
         (1 if len(bytes(v, 'utf-8')) % 4 > 0 else 0)
     slot = 1

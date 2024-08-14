@@ -21,11 +21,21 @@ mininet-network: build_dir
 asic-compile: build_dir
 	${SDE_INSTALL}/bin/bf-p4c -b tofino -o ${BUILD}/${P4NAME} ${P4SRC}
 
+hosts: client server
+hosts-debug: client-debug server-debug
+
 client: client.cpp client_utils.h
 	g++ client.cpp -o client
 
+client-debug: client.cpp client_utils.h
+	g++ -g -DDEBUG client.cpp -o client
+
 server: server.cpp server_utils.h
-	g++ -g server.cpp -o server
+	g++ server.cpp -o server
+
+server-debug: server.cpp server_utils.h
+	g++ -g -DDEBUG server.cpp -o server
+
 
 clean:
 	rm -rf ${BUILD}
