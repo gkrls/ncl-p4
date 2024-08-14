@@ -53,6 +53,7 @@ control expo_reducer( in bitmap_t bitmap_old,
       read_register;
       write_register;
     }
+    const default_action = NoAction; // should never happen
     const size = 32;
     const entries = {
       (0, 0) : write_register();
@@ -115,6 +116,7 @@ control reducer(in bitmap_t bitmap_old,
       read_register;
       write_register;
     }
+    const default_action = NoAction; // should never happen
     const size = 32;
     const entries = {
       (0, 0) : write_register();
@@ -211,6 +213,7 @@ control allreduce ( inout headers_t H,
       count_retransmission;
     }
     const size = 2;
+    const default_action = NoAction;
     const entries = {
       0: count_contribution();
       _: count_retransmission();
@@ -277,6 +280,7 @@ control allreduce ( inout headers_t H,
       next_multicast;
       next_drop;
     }
+    const default_action = NoAction;
     const entries = {
       ( 0, 0): next_drop();      // First packet for slot
       ( 0, 1): next_multicast(); // not seen and count == 1 ==> completed now
@@ -288,10 +292,6 @@ control allreduce ( inout headers_t H,
 
   action check_bitmap() { M.agg.bitmap_chk = M.agg.bitmap_old & H.agg.mask; }
   apply {
-
-    // M.agg.bitmap_old = 0;
-    // M.agg.bitmap_chk = 0;
-    // M.agg.count_old = 0;
 
     bitmap.apply();
     check_bitmap();
