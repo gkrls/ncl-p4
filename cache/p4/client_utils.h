@@ -119,4 +119,23 @@ inline uint32_t xorshift32(uint32_t state) {
   return state;
 };
 
+#include <unistd.h>
+#include <limits.h>
+#include <string>
+#include <iostream>
+
+static inline std::string GetExecutableDir() {
+  char path[PATH_MAX];
+  if (readlink("/proc/self/exe", path, sizeof(path)) == -1) {
+    return ""; // Failed to get executable path
+  }
+  std::string fullPath(path);
+  size_t pos = fullPath.find_last_of('/');
+  if (pos != std::string::npos) {
+    return fullPath.substr(0, pos); // Extract directory path
+  }
+  return ""; // No directory found
+}
+
+
 #endif

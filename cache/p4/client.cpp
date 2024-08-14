@@ -259,7 +259,8 @@ int main(int argc, char **argv) {
   } else {
 
     std::vector<uint64_t> keys;
-    loadKeys("data.txt", keys);
+    std::string dataTxt = GetExecutableDir().append("/data.txt");
+    loadKeys(dataTxt.c_str(), keys);
 
     std::vector<std::vector<uint64_t>> threadKeys(opt.Threads);
 
