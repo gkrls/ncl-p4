@@ -100,6 +100,6 @@ _kernel(1) void query(uint64_t key, uint32_t val[CACHELINE_WORDS],
     }
   } else {
     if (op == GET_RQ)
-      heavy_hitter(key, hot, count);
+      heavy_hitter(key, hot);
   }
 }

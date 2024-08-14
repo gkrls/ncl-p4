@@ -12,36 +12,30 @@
   "compute": {
     "1": {
       "kernel": {
-        "demangled": "query(op_t&, unsigned long, unsigned int*, unsigned int&, bool&, unsigned int&, bool)",
-        "mangled": "_Z5queryR4op_tmPjRjRbS2_b"
+        "demangled": "query(unsigned long, unsigned int*, op_t&, unsigned int&, bool&)",
+        "mangled": "_Z5querymPjR4op_tRjRb"
       },
       "spec": {
         "bytes": [
-          4,
           8,
           4,
           4,
-          1,
           4,
           1
         ],
         "counts": [
           1,
-          1,
-          2,
-          1,
+          4,
           1,
           1,
           1
         ],
         "names": [
-          "op",
           "key",
           "val",
+          "op",
           "mask",
-          "hot",
-          "count",
-          "update"
+          "hot"
         ]
       }
     }
@@ -59,7 +53,7 @@
         "id": 1,
         "locs": [],
         "lut": {},
-        "name": "ncvm.mem.managed.HitCounts0",
+        "name": "ncvm.mem.managed.Stats0",
         "sign": false
       },
       "10": {
@@ -101,7 +95,7 @@
         "id": 2,
         "locs": [],
         "lut": {},
-        "name": "ncvm.mem.managed.HitCounts1",
+        "name": "ncvm.mem.managed.Stats1",
         "sign": false
       },
       "3": {

@@ -26,7 +26,7 @@
                 "ip": "42.0.0.4"
             }
         },
-        "active-workers": 4,
+        "active-workers": 2,
         "mgid": 2,
         "udp-port-base": 4242,
         "timeout": 2,

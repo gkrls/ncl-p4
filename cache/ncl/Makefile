@@ -12,7 +12,7 @@ compile-ncl:
 	${NCLANG} -ncc -x ncl -ncl-is-device -ncl-target tna -ncl-device-id 1 -emit-asm \
 	${NCLSRC} -o $(shell pwd)/cache.ncl.device.1.p4 \
 	-mncvm --p4-no-switch-statements -mncvm --speculate=1 \
-	-mncvm --ncp-host-reflect-implicit-src-addr -mncvm --ncp-host-multicast-implicit-src-addr \
+	-mncvm -mncvm --ncp-host-multicast-implicit-src-addr \
 	-mncvm --ncp-implicit-addr=42.0.0.0 -mncvm --ncp-udp-port=4242
 
 mininet-bfshell:

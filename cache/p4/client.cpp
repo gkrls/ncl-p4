@@ -221,7 +221,6 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   }
   auto tEnd = std::chrono::high_resolution_clock::now();
 
-
   stats.duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart)
           .count();

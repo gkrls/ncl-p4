@@ -135,6 +135,7 @@ const bit<8> _ncl_device_id_unknown_ = 0;
 @ncvm("ncrt.const.action.error_arg")const bit<16> _ncl_error_action_arg_ = 0;
 @ncvm("ncrt.const.ip.4.addr")const bit<32> _ncl_ip4_addr_ = 704643072;
 @ncvm("ncrt.const.udp.port")const bit<16> _ncl_udp_port_ = 4242;
+@ncvm("ncrt.const.udp.port.hi")const bit<16> _ncl_udp_port_hi_ = 4242;
 @ncvm("ncrt.const.multicast.default_gid")const bit<16> _ncl_multicast_group_default_ = 0;
 @ncvm("ncrt.const.host.multicast.use_implicit_source_addr")const bool _ncl_host_multicast_implicit_src_ = true;
 @ncvm("ncrt.const.host.reflect.use_implicit_source_addr")const bool _ncl_host_reflect_implicit_src_ = true;
@@ -307,7 +308,7 @@ parser MainIngressParser(packet_in P,
 	state parse_udp {
 		P.extract(H.udp);
 		transition select(H.udp.dst_port) {
-			_ncl_udp_port_: parse_ncp;
+			_ncl_udp_port_ .. _ncl_udp_port_hi_: parse_ncp;
 			default: accept;
 		}
 	}
@@ -345,117 +346,117 @@ action ncvm_swi_tbl_0_action_default() { }
 control ncl_compute(inout headers H,
                     inout metadata M,
                     in ingress_intrinsic_metadata_t IM) {
-	bit<32> call_i61;
 	bit<32> _tmp__8_and;
 	bit<32> _lv__0_bitmap_0_reg2mem = 0;
-	@name(".ncvm.mem.net.Bitmap_fragment_0_")
-	@hidden
-	Register<bit<32>, bit<16>>(16384) _mem_Bitmap_fragment_0_;
-	@name(".ncvm.mem.net.Agg_fragment_30_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_30_;
-	@name(".ncvm.mem.net.Agg_fragment_9_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_9_;
-	@name(".ncvm.mem.net.Agg_fragment_24_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_24_;
-	@name(".ncvm.mem.net.Agg_fragment_20_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_20_;
-	@name(".ncvm.mem.net.Agg_fragment_29_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_29_;
-	@name(".ncvm.mem.net.Agg_fragment_25_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_25_;
-	@name(".ncvm.mem.net.Agg_fragment_6_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_6_;
-	@name(".ncvm.mem.net.Agg_fragment_21_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_21_;
-	@name(".ncvm.mem.net.Agg_fragment_31_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_31_;
-	@name(".ncvm.mem.net.Agg_fragment_8_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_8_;
-	@name(".ncvm.mem.net.Agg_fragment_13_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_13_;
-	@name(".ncvm.mem.net.Agg_fragment_28_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_28_;
-	@name(".ncvm.mem.net.Agg_fragment_7_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_7_;
-	@name(".ncvm.mem.net.Agg_fragment_19_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_19_;
-	@name(".ncvm.mem.net.Expo")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Expo;
-	@name(".ncvm.mem.net.Agg_fragment_10_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_10_;
-	@name(".ncvm.mem.net.Bitmap_fragment_1_")
-	@hidden
-	Register<bit<32>, bit<16>>(16384) _mem_Bitmap_fragment_1_;
-	@name(".ncvm.mem.net.Agg_fragment_26_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_26_;
-	@name(".ncvm.mem.net.Agg_fragment_22_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_22_;
-	@name(".ncvm.mem.net.Agg_fragment_16_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_16_;
+	bit<32> call_i61;
 	@name(".ncvm.mem.net.Agg_fragment_0_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_0_;
-	@name(".ncvm.mem.net.Agg_fragment_14_")
+	@name(".ncvm.mem.net.Agg_fragment_20_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_14_;
-	@name(".ncvm.mem.net.Agg_fragment_27_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_27_;
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_20_;
 	@name(".ncvm.mem.net.Agg_fragment_11_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_11_;
-	@name(".ncvm.mem.net.Agg_fragment_18_")
+	@name(".ncvm.mem.net.Agg_fragment_24_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_18_;
-	@name(".ncvm.mem.net.Agg_fragment_4_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_4_;
-	@name(".ncvm.mem.net.Agg_fragment_15_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_15_;
-	@name(".ncvm.mem.net.Agg_fragment_2_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_2_;
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_24_;
 	@name(".ncvm.mem.net.Agg_fragment_3_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_3_;
-	@name(".ncvm.mem.net.Agg_fragment_17_")
+	@name(".ncvm.mem.net.Agg_fragment_13_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_17_;
-	@name(".ncvm.mem.net.Count")
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_13_;
+	@name(".ncvm.mem.net.Agg_fragment_19_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Count;
-	@name(".ncvm.mem.net.Agg_fragment_1_")
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_19_;
+	@name(".ncvm.mem.net.Agg_fragment_8_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_1_;
-	@name(".ncvm.mem.net.Agg_fragment_5_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_5_;
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_8_;
 	@name(".ncvm.mem.net.Agg_fragment_23_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_23_;
+	@name(".ncvm.mem.net.Agg_fragment_5_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_5_;
+	@name(".ncvm.mem.net.Agg_fragment_1_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_1_;
+	@name(".ncvm.mem.net.Agg_fragment_27_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_27_;
+	@name(".ncvm.mem.net.Agg_fragment_4_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_4_;
+	@name(".ncvm.mem.net.Agg_fragment_29_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_29_;
+	@name(".ncvm.mem.net.Agg_fragment_21_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_21_;
+	@name(".ncvm.mem.net.Agg_fragment_18_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_18_;
+	@name(".ncvm.mem.net.Agg_fragment_14_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_14_;
+	@name(".ncvm.mem.net.Agg_fragment_7_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_7_;
+	@name(".ncvm.mem.net.Agg_fragment_30_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_30_;
+	@name(".ncvm.mem.net.Agg_fragment_17_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_17_;
+	@name(".ncvm.mem.net.Agg_fragment_16_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_16_;
+	@name(".ncvm.mem.net.Agg_fragment_26_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_26_;
+	@name(".ncvm.mem.net.Count")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Count;
+	@name(".ncvm.mem.net.Agg_fragment_31_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_31_;
+	@name(".ncvm.mem.net.Agg_fragment_25_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_25_;
+	@name(".ncvm.mem.net.Bitmap_fragment_1_")
+	@hidden
+	Register<bit<32>, bit<16>>(16384) _mem_Bitmap_fragment_1_;
 	@name(".ncvm.mem.net.Agg_fragment_12_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_12_;
+	@name(".ncvm.mem.net.Agg_fragment_10_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_10_;
+	@name(".ncvm.mem.net.Agg_fragment_6_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_6_;
+	@name(".ncvm.mem.net.Agg_fragment_2_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_2_;
+	@name(".ncvm.mem.net.Bitmap_fragment_0_")
+	@hidden
+	Register<bit<32>, bit<16>>(16384) _mem_Bitmap_fragment_0_;
+	@name(".ncvm.mem.net.Expo")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Expo;
+	@name(".ncvm.mem.net.Agg_fragment_15_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_15_;
+	@name(".ncvm.mem.net.Agg_fragment_22_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_22_;
+	@name(".ncvm.mem.net.Agg_fragment_28_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_28_;
+	@name(".ncvm.mem.net.Agg_fragment_9_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_9_;
 	RegisterAction<bit<32>, bit<16>, bit<32>>(_mem_Bitmap_fragment_0_) __ra__ncvm_atomic_and_u32_0_0_0_l_0_ = {
 		void apply(inout bit<32> R, out bit<32> O){
 			O = R;
@@ -759,8 +760,8 @@ control ncl_compute(inout headers H,
 		const default_action = ncvm_swi_tbl_0_action_default();
 		const size = 2;
 		const entries = {
-			1 : ncvm_swi_tbl_0_action_0;
-			0 : ncvm_swi_tbl_0_action_1;
+			0 : ncvm_swi_tbl_0_action_0;
+			1 : ncvm_swi_tbl_0_action_1;
 		}
 	}
 	RegisterAction<bit<32>, bit<16>, bit<32>>(_mem_Expo) __ra__ncvm_atomic_write_u32_38_1_0_m_0_ = {
@@ -1123,8 +1124,8 @@ control ncl_compute(inout headers H,
 			mem_rmw_o_35_mem_Count(call_i61, H.ncp_data_1_2[0].value);
 			ncvm_swi_tbl_key_0 = call_i61;
 			switch (ncvm_swi_tbl_0.apply().action_run) {
-				ncvm_swi_tbl_0_action_0 : { ncvm_action_multicast(M, 42); }
-				ncvm_swi_tbl_0_action_1 : { ncvm_action_reflect(M); }
+				ncvm_swi_tbl_0_action_0 : { ncvm_action_reflect(M); }
+				ncvm_swi_tbl_0_action_1 : { ncvm_action_multicast(M, 42); }
 				ncvm_swi_tbl_0_action_default : { }
 			}
 		}
@@ -1328,7 +1329,7 @@ parser MainEgressParser(packet_in P,
 	state parse_udp {
 		P.extract(H.udp);
 		transition select(H.udp.dst_port) {
-			_ncl_udp_port_: parse_ncp;
+			_ncl_udp_port_ .. _ncl_udp_port_hi_: parse_ncp;
 			default: accept;
 		}
 	}
@@ -1372,7 +1373,7 @@ control MainEgress(inout headers H,
 		H.udp.checksum = 0;
 	}
 	action device_port( bit<8> id) {	H.ncp.d_dst = id; }
-	@name(".ncrt.egress.tbl.dev.ports")
+	@name(".ncrt.egress.tbl.ports")
 	table ncl_port_tbl {
 		key = { EM.egress_port : exact; }
 		actions = {host_port; device_port; drop; }
@@ -1400,7 +1401,7 @@ control MainEgress(inout headers H,
 		if ((dst_port != 0))
 			H.udp.dst_port = dst_port;
 	}
-	@name(".ncrt.egress.tbl.udp.adj.ports")
+	@name(".ncrt.egress.tbl.udp.adj")
 	table ncl_udp_adj_tbl {
 		key = {
 			H.ncp.cid: exact;

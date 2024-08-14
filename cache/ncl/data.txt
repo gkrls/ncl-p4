@@ -1,0 +1,20 @@
+hello=world
+netcl=is awesome
+vu=amsterdam
+int=4
+hpdc=distributed
+vusec=pwnies
+uint8_t=1 byte long
+de=boelelaan
+nu=gebouw
+var1=int x = 3;
+var2=int y = 42;
+xxx=amsterdam
+sc24=atlanta
+4242=1337
+x=nullptr
+title=who let the dogs
+out=henri
+fish=jellyfish
+op=42 + 42 * 9
+password=hash(password)
