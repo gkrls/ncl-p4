@@ -47,7 +47,7 @@ parser ingress_parser(packet_in P,
   state parse_udp {
     P.extract(H.udp);
     transition select(H.udp.dst_port) {
-          CACHE_UDP_PORT : parse_cache;
+      4000 .. 5000: parse_cache;
                  default : accept;
     }
   }
