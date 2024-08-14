@@ -5,6 +5,7 @@
 #include <cstring>
 #include <endian.h>
 #include <future>
+#include <iomanip>
 #include <iostream>
 #include <istream>
 #include <netinet/in.h>
@@ -307,7 +308,7 @@ int main(int argc, char **argv) {
       // stats.at(i).print(std::cout) << '\n';
       totalThroughput += throughput;
     }
-
+    std::cout << std::fixed << std::setprecision(3);
     std::cout << "Total throughput: " << totalThroughput << " queries per second\n";
   }
 }
