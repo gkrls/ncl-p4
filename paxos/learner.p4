@@ -127,12 +127,11 @@ control ingress( inout headers hdr,
   apply {
     if (hdr.ipv4.isValid()) {
       if (hdr.paxos.isValid()) {
-        // read_round();
+
         acptid = (bit<8>) hdr.paxos.acptid;
         get_acptid_tbl.apply();
 
         meta.paxos_metadata.old_round = read_old_round_and_write_max.execute(hdr.paxos.inst);
-        // update_round_tbl.apply();
 
         get_round_check();
         if ((round_check[ROUND_SIZE - 1: ROUND_SIZE - 1] == 1) || (round_check == 0)) {

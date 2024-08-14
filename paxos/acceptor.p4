@@ -11,9 +11,9 @@ control ingress( inout headers hdr,
                  inout ingress_intrinsic_metadata_for_tm_t tim) {
 
   Register<bit<DATAPATH_SIZE>, bit<1>>(1) registerAcceptorID;
-  Register<bit<ROUND_SIZE>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerRound;
   Register<bit<ROUND_SIZE>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerVRound;
-  // Register<bit<VALUE_SIZE>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerValue;
+
+  // VALUE
   Register<bit<32>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerValue1;
   Register<bit<32>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerValue2;
   Register<bit<32>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerValue3;
@@ -105,6 +105,8 @@ control ingress( inout headers hdr,
     }
   };
 
+  // ROUND
+  Register<bit<ROUND_SIZE>, bit<INSTANCE_SIZE>>(INSTANCE_COUNT) registerRound;
   RegisterAction<bit<ROUND_SIZE>, bit<INSTANCE_SIZE>, bit<ROUND_SIZE>>(registerRound) read_old_round_and_write_max = {
     void apply(inout bit<ROUND_SIZE> reg, out bit<ROUND_SIZE> ret) {
       ret = reg;
@@ -119,7 +121,6 @@ control ingress( inout headers hdr,
   action handle_1a() {
     hdr.paxos.msgtype = PAXOS_1B;
     hdr.paxos.vrnd = registerVRound.read(hdr.paxos.inst);
-    // hdr.paxos.paxosval = registerValue.read(hdr.paxos.inst);
     registerRound.write(hdr.paxos.inst, hdr.paxos.rnd);
     meta.paxos_metadata.set_drop = 0;
     read_value = true;
@@ -128,7 +129,6 @@ control ingress( inout headers hdr,
   action handle_2a() {
     hdr.paxos.msgtype = PAXOS_2B;
     registerVRound.write(hdr.paxos.inst, hdr.paxos.rnd);
-    // registerValue.write(hdr.paxos.inst, hdr.paxos.paxosval);
     registerRound.write(hdr.paxos.inst, hdr.paxos.rnd);
     meta.paxos_metadata.set_drop = 0;
   }

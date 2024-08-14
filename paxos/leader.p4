@@ -29,18 +29,11 @@ control ingress( inout headers hdr,
   }
 
   action increase_instance() {
-    // registerInstance.read(hdr.paxos.inst, 0);
-    // hdr.paxos.inst = hdr.paxos.inst + 1;
-    // registerInstance.write(0, hdr.paxos.inst);
-    // meta.paxos_metadata.set_drop = 0;
     hdr.paxos.inst = inc_instance.execute(0);
     meta.paxos_metadata.set_drop = 0;
   }
 
   action reset_instance() {
-    // registerInstance.write(0, 0);
-    // Do not need to forward this message
-    // meta.paxos_metadata.set_drop = 1
     hdr.paxos.inst = rst_instance.execute(0);
     meta.paxos_metadata.set_drop = 1;
   }
