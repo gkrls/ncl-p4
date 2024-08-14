@@ -1,6 +1,7 @@
 BUILD := $(shell pwd)/build
 P4SRC := $(shell realpath "switch.p4")
 P4NAME:= switch
+P4CONF := switch.conf
 
 # ifndef SDE
 # $(error SDE is undefined)
@@ -31,19 +32,19 @@ asic: asic-compile
 asic-bfrt:
 	${SDE}/run_bfshell.sh -b ${PWD}/bfrt-cli-asic.py
 
-hpdc-servers-setup-ips:
+hpdc-setup-ips:
 	ssh hpdc-gnode1 sudo ip addr replace 42.0.0.1/24 dev ens4f0
 	ssh hpdc-gnode2 sudo ip addr replace 42.0.0.2/24 dev ens4f0
 	ssh hpdc-gnode3 sudo ip addr replace 42.0.0.3/24 dev ens4f0
 	ssh hpdc-gnode4 sudo ip addr replace 42.0.0.4/24 dev ens4f0
 
-hpdc-servers-setup-pull:
+hpdc-setup-pull:
 	ssh hpdc-gnode1 "cd ncl-p4 && git pull"
 	ssh hpdc-gnode2 "cd ncl-p4 && git pull"
 	ssh hpdc-gnode3 "cd ncl-p4 && git pull"
 	ssh hpdc-gnode4 "cd ncl-p4 && git pull"
 
-hpdc-servers-setup-build:
+hpdc-setup-build:
 	ssh hpdc-gnode1 "cd ncl-p4/cache/p4 && make client"
 	ssh hpdc-gnode2 "cd ncl-p4/cache/p4 && make client"
 	ssh hpdc-gnode3 "cd ncl-p4/cache/p4 && make client"
