@@ -77,22 +77,22 @@ hpdc-6-servers-setup-pull:
 
 
 hpdc-2-servers-worker:
-	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make -B worker"
 
 hpdc-4-servers-worker:
-	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode4 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode4 "cd ncl-p4/agg/ncl && make -B worker"
 
 hpdc-6-servers-cpp-worker:
-	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode4 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode5 "cd ncl-p4/agg/ncl && make worker"
-	ssh hpdc-gnode6 "cd ncl-p4/agg/ncl && make worker"
+	ssh hpdc-gnode1 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode2 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode3 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode4 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode5 "cd ncl-p4/agg/ncl && make -B worker"
+	ssh hpdc-gnode6 "cd ncl-p4/agg/ncl && make -B worker"
 
 hpdc-2-servers-setup: hpdc-servers-setup-ips
 	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
