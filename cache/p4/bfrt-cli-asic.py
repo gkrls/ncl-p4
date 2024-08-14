@@ -94,7 +94,7 @@ def is_bit_set(value, i):
 cache_entries = {}
 num_in_cache = 0
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) as f:
-    lines = f.read().strip().splitlines()
+    lines = f.read().splitlines()
     num_in_cache = round(CACHE / 100 * len(lines))
 
     print(f"\nWill insert {CACHE}% of keys in data.txt ({num_in_cache} keys) in the cache!!\n")
@@ -128,10 +128,11 @@ for i, (k, v) in enumerate(cache_entries.items()):
             val[4:8], byteorder='little'))
     if is_bit_set(mask, 2):
         Cache.Cache3.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[8:16], byteorder='little'))
+            val[8:12], byteorder='little'))
     if is_bit_set(mask, 3):
-        Cache.Cache3.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[16:32], byteorder='little'))
+        Cache.Cache4.add(REGISTER_INDEX=i, f1=int.from_bytes(
+            val[12:16], byteorder='little'))
+
 
     print(
         f"  key: 0x{k_enc:016x}/{k_enc} --> cacheline: {i} | slot: {slot}, mask: {mask:032b} / {val_bytes:2d}B,{val_words}W | raw: {k} -> {v}")
