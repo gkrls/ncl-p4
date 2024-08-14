@@ -52,6 +52,7 @@ control expo_reducer( in bitmap_t bitmap_old,
       update_register;
       read_register;
       write_register;
+      NoAction;
     }
     const default_action = NoAction; // should never happen
     const size = 32;
@@ -115,6 +116,7 @@ control reducer(in bitmap_t bitmap_old,
       update_register;
       read_register;
       write_register;
+      NoAction;
     }
     const default_action = NoAction; // should never happen
     const size = 32;
@@ -211,6 +213,7 @@ control allreduce ( inout headers_t H,
     actions = {
       count_contribution;
       count_retransmission;
+      NoAction;
     }
     const size = 2;
     const default_action = NoAction;
@@ -279,6 +282,7 @@ control allreduce ( inout headers_t H,
       next_reflect;
       next_multicast;
       next_drop;
+      NoAction;
     }
     const default_action = NoAction;
     const entries = {
@@ -379,7 +383,8 @@ control networking( inout headers_t H,
       H.arp_ip4.dst_proto_addr: exact;
     }
     actions = {
-      arp_resolve; NoAction;
+      arp_resolve;
+      NoAction;
     }
     const default_action = NoAction;
     const size = ARP_TABLE_CAPACITY;
