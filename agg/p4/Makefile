@@ -125,34 +125,6 @@ hpdc-6-servers-compile-debug:
 	ssh hpdc-gnode5 "cd ncl-p4/agg/ncl && make -B worker"
 	ssh hpdc-gnode6 "cd ncl-p4/agg/ncl && make -B worker"
 
-# hpdc-servers-setup-ips:
-# 	ssh hpdc-gnode1 sudo ip addr replace 42.0.0.1/24 dev ens4f0
-# 	ssh hpdc-gnode2 sudo ip addr replace 42.0.0.2/24 dev ens4f0
-# 	ssh hpdc-gnode3 sudo ip addr replace 42.0.0.3/24 dev ens4f0
-# 	ssh hpdc-gnode4 sudo ip addr replace 42.0.0.4/24 dev ens4f0
-
-# hpdc-servers-setup-pull:
-# 	ssh hpdc-gnode1 "cd ncl-p4 && git pull"
-# 	ssh hpdc-gnode2 "cd ncl-p4 && git pull"
-# 	ssh hpdc-gnode3 "cd ncl-p4 && git pull"
-# 	ssh hpdc-gnode4 "cd ncl-p4 && git pull"
-
-# hpdc-servers-setup: hpdc-servers-setup-ips
-# 	ssh hpdc-gnode1 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
-# 	ssh hpdc-gnode2 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
-# 	ssh hpdc-gnode3 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
-# 	ssh hpdc-gnode4 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
-
-# hpdc-servers-start:
-# 	ssh hpdc-gnode1 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode1 --steps 4 --multiplier 1024 --perf > out.txt" &
-# 	ssh hpdc-gnode2 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode2 --steps 4 --multiplier 1024 --perf > out.txt" &
-# 	ssh hpdc-gnode3 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode3 --steps 4 --multiplier 1024 --perf > out.txt" &
-# 	ssh hpdc-gnode4 "cd ncl-p4/agg/p4 && python3 worker.py --config asic:hpdc-gnode4 --steps 4 --multiplier 1024 --perf > out.txt" &
-# 	wait
-
-# asic-bfrt:
-# 	${SDE}/run_bfshell.sh -b ${PWD}/bfrt-cli-asic.py
-
 clean:
 	rm -rf ${BUILD}
 

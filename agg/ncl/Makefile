@@ -64,17 +64,17 @@ hpdc-6-servers-ips:
 	ssh hpdc-gnode5 sudo ip addr replace 42.0.0.5/24 dev ens4f0
 	ssh hpdc-gnode6 sudo ip addr replace 42.0.0.6/24 dev ens4f0
 
-hpdc-2-servers-setup-pull:
+hpdc-2-servers-pull:
 	ssh hpdc-gnode1 "cd ncl-p4 && git reset --hard && git pull"
 	ssh hpdc-gnode2 "cd ncl-p4 && git reset --hard && git pull"
 
-hpdc-4-servers-setup-pull:
+hpdc-4-servers-pull:
 	ssh hpdc-gnode1 "cd ncl-p4 && git reset --hard && git pull"
 	ssh hpdc-gnode2 "cd ncl-p4 && git reset --hard && git pull"
 	ssh hpdc-gnode3 "cd ncl-p4 && git reset --hard && git pull"
 	ssh hpdc-gnode4 "cd ncl-p4 && git reset --hard && git pull"
 
-hpdc-6-servers-setup-pull:
+hpdc-6-servers-pull:
 	ssh hpdc-gnode1 "cd ncl-p4 && git reset --hard && git pull"
 	ssh hpdc-gnode2 "cd ncl-p4 && git reset --hard && git pull"
 	ssh hpdc-gnode3 "cd ncl-p4 && git reset --hard && git pull"
