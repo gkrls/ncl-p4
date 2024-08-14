@@ -11,6 +11,10 @@ pid2=$!  # Capture the PID of the second process
 pid3=$!  # Capture the PID of the second process
 # pid3=$!  # Capture the PID of the third process
 
+echo "Process 1 PID: $pid1"
+echo "Process 2 PID: $pid2"
+echo "Process 3 PID: $pid3"
+
 # Wait for all processes to finish
 wait $pid1
 cat time1.txt
