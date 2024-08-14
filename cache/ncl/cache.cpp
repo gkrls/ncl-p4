@@ -12,11 +12,11 @@
 using namespace ncl;
 using bitmap_t = uint32_t;
 
-enum op_t { GET_RQ = 1, GET_RS, PUT_RQ, PUT_RS, DEL_RQ, DEL_RS, UPD_RQ, UPD_RS };
+enum op_t : uint8_t { GET_RQ = 1, GET_RS, PUT_RQ, PUT_RS, DEL_RQ, DEL_RS, UPD_RQ, UPD_RS };
 
 _net_ uint32_t Cache[CACHELINE_WORDS][CACHE_LINES];
-_net_ bool Valid0[CACHE_LINES];
-_net_ bool Valid1[CACHE_LINES];
+_managed_ bool Valid0[CACHE_LINES];
+_managed_ bool Valid1[CACHE_LINES];
 _managed_ uint32_t Stats0[CACHE_LINES];
 _managed_ uint32_t Stats1[CACHE_LINES];
 

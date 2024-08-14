@@ -12,7 +12,7 @@ compile-ncl:
 	${NCLANG} -ncc -x ncl -ncl-is-device -ncl-target tna -ncl-device-id 1 -emit-asm \
 	${NCLSRC} -o $(shell pwd)/cache.ncl.device.1.p4 \
 	-mncvm --p4-no-switch-statements -mncvm --speculate=1 \
-	-mncvm -mncvm --ncp-host-multicast-implicit-src-addr \
+	-mncvm --ncp-host-multicast-implicit-src-addr \
 	-mncvm --ncp-implicit-addr=42.0.0.0 -mncvm --ncp-udp-port=4242
 
 mininet-bfshell:
@@ -27,9 +27,20 @@ mininet-network: build_dir
 asic-compile: build_dir
 	${SDE_INSTALL}/bin/bf-p4c -b tofino -o ${BUILD}/${P4NAME} ${P4SRC}
 
-worker: worker.cpp worker2.cpp worker_utils.h
-	g++ ${CXXFLAGS} worker.cpp -o worker
-	g++ ${CXXFLAGS} worker2.cpp -o worker2
+hosts: client server
+hosts-debug: client-debug server-debug
+
+client: client.cpp client_utils.h
+	g++ client.cpp -O3 -o client -pthread
+
+client-debug: client.cpp client_utils.h
+	g++ -g -DDEBUG client.cpp -o client -lpthread
+
+server: server.cpp server_utils.h
+	g++ server.cpp -O3 -o server -pthread
+
+server-debug: server.cpp server_utils.h
+	g++ -g -DDEBUG server.cpp -o server -lpthread
 
 asic: asic-compile
 	tmux new -d -s switch

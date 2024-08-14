@@ -169,7 +169,7 @@ for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw
     idx = e.data[b'i']
     print(f"  0x{Cache.Cache2.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache2.f1'][0]:08x}",end='')
 print()
-print("  Cache4: ", end='')
+print("  Cache3: ", end='')
 for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
     idx = e.data[b'i']
     print(f"  0x{Cache.Cache3.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache3.f1'][0]:08x}",end='')

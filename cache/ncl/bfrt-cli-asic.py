@@ -12,7 +12,9 @@ CACHE=100
 SWITCH = {'name': "s1", 'mac': "42:00:00:00:00:00", 'ip': "42.0.0.0", 'id': 1}
 HOSTS = {
     "server":  {'mac': "42:00:00:00:00:04", 'ip': "42.0.0.4", 'port': 4, 'id': 4},
-    "client1": {'mac': "42:00:00:00:00:01", 'ip': "42.0.0.1", 'port': 1, 'id': 1}}
+    "client1": {'mac': "42:00:00:00:00:01", 'ip': "42.0.0.1", 'port': 1, 'id': 1},
+    "client1": {'mac': "42:00:00:00:00:02", 'ip': "42.0.0.2", 'port': 2, 'id': 2},
+    "client1": {'mac': "42:00:00:00:00:03", 'ip': "42.0.0.3", 'port': 3, 'id': 3}}
 
 
 def get_dport_from_fport(fp, ch=0):
@@ -83,6 +85,9 @@ for h in HOSTS:
     mac = EUI(HOSTS[h]['mac'])
     ip = IPAddress(HOSTS[h]['ip'])
 
+    # enable switch ports
+    bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
+                        PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
     # ncp
     NCRT.ingress.tbl.forward.host.add_with_ncl_forward_host(ncl_act_arg=HOSTS[h]['id'], port=dport)
     NCRT.egress.tbl.ports.add_with_host_port(egress_port=dport, id=HOSTS[h]['id'], ip=HOSTS[h]['ip'], mac=HOSTS[h]['mac'], neighbor=True)

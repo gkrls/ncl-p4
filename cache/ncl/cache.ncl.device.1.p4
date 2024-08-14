@@ -94,7 +94,7 @@ struct headers {
 	ncp_h ncp;
 	_box_h<bit<64>>[1] ncp_data_1_0;
 	_box_h<bit<32>>[4] ncp_data_1_1;
-	_box_h<bit<32>>[1] ncp_data_1_2;
+	_box_h<bit<8>>[1] ncp_data_1_2;
 	_box_h<bit<32>>[1] ncp_data_1_3;
 	_box_h<bit<8>>[1] ncp_data_1_4;
 }
@@ -133,9 +133,10 @@ const bit<8> _ncl_device_id_unknown_ = 0;
 @ncvm("ncrt.const.action.error_arg")const bit<16> _ncl_error_action_arg_ = 0;
 @ncvm("ncrt.const.ip.4.addr")const bit<32> _ncl_ip4_addr_ = 704643072;
 @ncvm("ncrt.const.udp.port")const bit<16> _ncl_udp_port_ = 4242;
+@ncvm("ncrt.const.udp.port.hi")const bit<16> _ncl_udp_port_hi_ = 4242;
 @ncvm("ncrt.const.multicast.default_gid")const bit<16> _ncl_multicast_group_default_ = 0;
 @ncvm("ncrt.const.host.multicast.use_implicit_source_addr")const bool _ncl_host_multicast_implicit_src_ = true;
-@ncvm("ncrt.const.host.reflect.use_implicit_source_addr")const bool _ncl_host_reflect_implicit_src_ = true;
+@ncvm("ncrt.const.host.reflect.use_implicit_source_addr")const bool _ncl_host_reflect_implicit_src_ = false;
 @ncvm("ncrt.const.host.loop.use_implicit_source_addr")const bool _ncl_host_loop_implicit_src_ = false;
 @ncvm("ncrt.const.use_implicit_ip4_src_addr")const bool _ncl_use_implicit_ip4_src_addr_ = ((_ncl_host_multicast_implicit_src_ || _ncl_host_reflect_implicit_src_) || _ncl_host_loop_implicit_src_);
 action ncl_lookup_read_u8(out bit<8> val,  bit<8> value) {val = value; }
@@ -143,6 +144,13 @@ action ncl_lookup_read_u16(out bit<16> val,  bit<16> value) {val = value; }
 action ncl_lookup_read_u32(out bit<32> val,  bit<32> value) {val = value; }
 action ncl_lookup_read_u64(out bit<64> val,  bit<64> value) {val = value; }
 action ncl_lookup_read_none() { }
+@ncvm("ncrt.action.default")
+action ncvm_action_default(in headers H, inout metadata M) {if ((_ncl_default_action_ == _ncl_action_pass_)) {
+	M.ncl_act = _ncl_action_send_to_host_;
+}
+else {
+	M.ncl_act = _ncl_action_drop_;
+} }
 @ncvm("ncrt.action.drop")
 action ncvm_action_drop(inout metadata M) {
 	M.ncl_act = _ncl_action_drop_;
@@ -269,7 +277,7 @@ parser MainIngressParser(packet_in P,
 	state parse_udp {
 		P.extract(H.udp);
 		transition select(H.udp.dst_port) {
-			_ncl_udp_port_: parse_ncp;
+			_ncl_udp_port_ .. _ncl_udp_port_hi_: parse_ncp;
 			default: accept;
 		}
 	}
@@ -309,61 +317,59 @@ action ncvm_swi_tbl_0_action_default() { }
 control ncl_compute(inout headers H,
                     inout metadata M,
                     in ingress_intrinsic_metadata_t IM) {
-	bit<32> _lv__3_spec_select73_i_1;
-	_box_h<bit<32>>[4] _lv__0_cms_i;
-	bit<8> _tmp__45_cond_in_in;
-	bit<32> _lv__4_spec_select73_i_2;
-	bit<32> _tmp__18_icmp_conv_2_sub;
-	bit<32> _tmp__16_icmp_conv_1_sub;
-	bool call_i47_i;
-	bit<16> _lv__1_cacheline = 0;
-	bit<32> _lv__2_bitmap = 0;
-	bit<32> _tmp__14_icmp_conv_0_sub;
-	bool call_i_i53;
+	bool call_i43_i;
+	bool call_i_i55;
 	bit<1> _lv__6__2;
 	bit<1> _lv__7_spec_select74_i;
+	bit<32> _lv__4_spec_select73_i_2;
+	bit<32> _tmp__18_icmp_conv_2_sub;
+	_box_h<bit<32>>[4] _lv__0_cms_i;
+	bit<16> _lv__1_cacheline = 0;
+	bit<32> _lv__2_bitmap = 0;
 	bit<32> _lv__5_spec_select73_i_3;
 	bit<32> _tmp__20_icmp_conv_3_sub;
+	bit<8> _tmp__45_cond_in_in;
+	bool call_i47_i;
 	bit<32> call_i50_i;
-	bool call_i43_i;
-	Hash<bit<14>>(HashAlgorithm_t.XOR16) _hash_3_xor16_u14;
-	Hash<bit<14>>(HashAlgorithm_t.CRC16) _hash_0_crc16_u14;
-	Hash<bit<15>>(HashAlgorithm_t.XOR32) _hash_4_xor32_u15;
+	bit<32> _lv__3_spec_select73_i_1;
+	bit<32> _tmp__16_icmp_conv_1_sub;
+	bit<32> _tmp__14_icmp_conv_0_sub;
 	Hash<bit<15>>(HashAlgorithm_t.CRC32) _hash_5_crc32_u15;
-	Hash<bit<14>>(HashAlgorithm_t.CRC64) _hash_2_crc64_u14;
 	Hash<bit<14>>(HashAlgorithm_t.CRC32) _hash_1_crc32_u14;
 	Hash<bit<15>>(HashAlgorithm_t.CRC64) _hash_6_crc64_u15;
-	@name(".ncvm.mem.managed.Stats1")
-	Register<bit<32>, bit<16>>(4096) _mem_Stats1;
-	@name(".ncvm.mem.managed.b1")
-	Register<bit<8>, bit<16>>(32768) _mem_b1;
-	@name(".ncvm.mem.managed.c0")
-	Register<bit<32>, bit<16>>(16384) _mem_c0;
-	@name(".ncvm.mem.net.Cache_fragment_1_")
-	@hidden
-	Register<bit<32>, bit<16>>(4096) _mem_Cache_fragment_1_;
-	@name(".ncvm.mem.managed.c1")
-	Register<bit<32>, bit<16>>(16384) _mem_c1;
-	@name(".ncvm.mem.managed.b0")
-	Register<bit<8>, bit<16>>(32768) _mem_b0;
-	@name(".ncvm.mem.managed.Stats0")
-	Register<bit<32>, bit<16>>(4096) _mem_Stats0;
-	@name(".ncvm.mem.net.Valid1")
-	@hidden
-	Register<bit<8>, bit<16>>(4096) _mem_Valid1;
-	@name(".ncvm.mem.net.Cache_fragment_2_")
-	@hidden
-	Register<bit<32>, bit<16>>(4096) _mem_Cache_fragment_2_;
-	@name(".ncvm.mem.net.Cache_fragment_3_")
-	@hidden
-	Register<bit<32>, bit<16>>(4096) _mem_Cache_fragment_3_;
-	@name(".ncvm.mem.managed.c3")
-	Register<bit<32>, bit<16>>(16384) _mem_c3;
-	@name(".ncvm.mem.net.Valid0")
-	@hidden
+	Hash<bit<14>>(HashAlgorithm_t.XOR16) _hash_3_xor16_u14;
+	Hash<bit<15>>(HashAlgorithm_t.XOR32) _hash_4_xor32_u15;
+	Hash<bit<14>>(HashAlgorithm_t.CRC64) _hash_2_crc64_u14;
+	Hash<bit<14>>(HashAlgorithm_t.CRC16) _hash_0_crc16_u14;
+	@name(".ncvm.mem.managed.Valid0")
 	Register<bit<8>, bit<16>>(4096) _mem_Valid0;
 	@name(".ncvm.mem.managed.c2")
 	Register<bit<32>, bit<16>>(16384) _mem_c2;
+	@name(".ncvm.mem.net.Cache_fragment_3_")
+	@hidden
+	Register<bit<32>, bit<16>>(4096) _mem_Cache_fragment_3_;
+	@name(".ncvm.mem.net.Cache_fragment_1_")
+	@hidden
+	Register<bit<32>, bit<16>>(4096) _mem_Cache_fragment_1_;
+	@name(".ncvm.mem.managed.c3")
+	Register<bit<32>, bit<16>>(16384) _mem_c3;
+	@name(".ncvm.mem.net.Cache_fragment_2_")
+	@hidden
+	Register<bit<32>, bit<16>>(4096) _mem_Cache_fragment_2_;
+	@name(".ncvm.mem.managed.Stats0")
+	Register<bit<32>, bit<16>>(4096) _mem_Stats0;
+	@name(".ncvm.mem.managed.c0")
+	Register<bit<32>, bit<16>>(16384) _mem_c0;
+	@name(".ncvm.mem.managed.c1")
+	Register<bit<32>, bit<16>>(16384) _mem_c1;
+	@name(".ncvm.mem.managed.Stats1")
+	Register<bit<32>, bit<16>>(4096) _mem_Stats1;
+	@name(".ncvm.mem.managed.Valid1")
+	Register<bit<8>, bit<16>>(4096) _mem_Valid1;
+	@name(".ncvm.mem.managed.b0")
+	Register<bit<8>, bit<16>>(32768) _mem_b0;
+	@name(".ncvm.mem.managed.b1")
+	Register<bit<8>, bit<16>>(32768) _mem_b1;
 	@name(".ncvm.mem.managed.b2")
 	Register<bit<8>, bit<16>>(32768) _mem_b2;
 	@name(".ncvm.mem.net.Cache_fragment_0_")
@@ -411,17 +417,17 @@ control ncl_compute(inout headers H,
 			R = ((bit<8>) 1);
 		}
 	};
-	bit<32> ncvm_swi_tbl_key_0;
+	bit<8> ncvm_swi_tbl_key_0;
 	table ncvm_swi_tbl_0 {
 		key = { ncvm_swi_tbl_key_0 : exact; }
 		actions = {ncvm_swi_tbl_0_action_0; ncvm_swi_tbl_0_action_1; ncvm_swi_tbl_0_action_2; ncvm_swi_tbl_0_action_3; ncvm_swi_tbl_0_action_default; }
 		const default_action = ncvm_swi_tbl_0_action_default();
 		const size = 4;
 		const entries = {
-			7 : ncvm_swi_tbl_0_action_0;
-			5 : ncvm_swi_tbl_0_action_1;
-			1 : ncvm_swi_tbl_0_action_2;
-			3 : ncvm_swi_tbl_0_action_3;
+			3 : ncvm_swi_tbl_0_action_0;
+			1 : ncvm_swi_tbl_0_action_1;
+			5 : ncvm_swi_tbl_0_action_2;
+			7 : ncvm_swi_tbl_0_action_3;
 		}
 	}
 	RegisterAction<bit<8>, bit<16>, bool>(_mem_Valid0) __ra__ncvm_atomic_cond_write_bool_7_0_0_le_0_ = {
@@ -571,13 +577,6 @@ control ncl_compute(inout headers H,
 	action mem_rmw_o_9_mem_Cache_fragment_2_(out bit<32> o, in bit<16> i) {	o = __ra__ncvm_atomic_cond_read_or_u32_15_1_0_le_0_.execute(i); }
 	action ncvm_sub_32_32_32(out bit<32> c, in bit<32> a, in bit<32> b) {	c = ((bit<32>) (a - b)); }
 	action ncvm_xor_8_1_1(out bit<8> c, in bit<1> a, in bit<1> b) {	c = ((bit<8>) (a ^ b)); }
-	@name(".ncvm.mem.managed.lut.Bitmap")
-	table _mem_lut_Bitmap {
-		key = { H.ncp_data_1_0[0].value : exact; }
-		actions = {_mem_lut_Bitmap_Read; NoAction; }
-		const default_action = NoAction();
-		const size = 8192;
-	}
 	@name(".ncvm.mem.managed.lut.Index")
 	table _mem_lut_Index {
 		key = { H.ncp_data_1_0[0].value : exact; }
@@ -585,22 +584,28 @@ control ncl_compute(inout headers H,
 		const default_action = NoAction();
 		const size = 4096;
 	}
+	@name(".ncvm.mem.managed.lut.Bitmap")
+	table _mem_lut_Bitmap {
+		key = { H.ncp_data_1_0[0].value : exact; }
+		actions = {_mem_lut_Bitmap_Read; NoAction; }
+		const default_action = NoAction();
+		const size = 8192;
+	}
 	apply {
 		_lv__0_cms_i[0] = ((_box_h<bit<32>>) {0});
 		_lv__0_cms_i[1] = ((_box_h<bit<32>>) {0});
 		_lv__0_cms_i[2] = ((_box_h<bit<32>>) {0});
 		_lv__0_cms_i[3] = ((_box_h<bit<32>>) {0});
 		_mem_lut_Index.apply();
-		bool _tmp__2_call_i19 = _mem_lut_Bitmap.apply().hit;
-		if (_tmp__2_call_i19) {
+		bool _tmp__2_call_i21 = _mem_lut_Bitmap.apply().hit;
+		if (_tmp__2_call_i21) {
 			ncvm_swi_tbl_key_0 = H.ncp_data_1_2[0].value;
 			switch (ncvm_swi_tbl_0.apply().action_run) {
-				ncvm_swi_tbl_0_action_default : { ncvm_action_drop(M); }
-				ncvm_swi_tbl_0_action_3 : {
-					mem_rmw_10_mem_Valid0(_lv__1_cacheline);
-					mem_rmw_11_mem_Valid1(_lv__1_cacheline);
-				}
 				ncvm_swi_tbl_0_action_2 : {
+					mem_rmw_8_mem_Valid0(_lv__1_cacheline);
+					mem_rmw_9_mem_Valid1(_lv__1_cacheline);
+				}
+				ncvm_swi_tbl_0_action_1 : {
 					if (((bool) _lv__2_bitmap[0:0]))
 						_tmp__45_cond_in_in = _mem_Valid0.read(_lv__1_cacheline);
 					else
@@ -619,6 +624,10 @@ control ncl_compute(inout headers H,
 					}
 				}
 				ncvm_swi_tbl_0_action_0 : {
+					mem_rmw_10_mem_Valid0(_lv__1_cacheline);
+					mem_rmw_11_mem_Valid1(_lv__1_cacheline);
+				}
+				ncvm_swi_tbl_0_action_3 : {
 					H.ncp_data_1_2[0].value = 8;
 					mem_rmw_0_mem_Valid0(_lv__1_cacheline);
 					mem_rmw_1_mem_Valid1(_lv__1_cacheline);
@@ -628,10 +637,7 @@ control ncl_compute(inout headers H,
 					mem_rmw_5_mem_Cache_fragment_3_(_lv__1_cacheline);
 					ncvm_action_reflect(M);
 				}
-				ncvm_swi_tbl_0_action_1 : {
-					mem_rmw_8_mem_Valid0(_lv__1_cacheline);
-					mem_rmw_9_mem_Valid1(_lv__1_cacheline);
-				}
+				ncvm_swi_tbl_0_action_default : { ncvm_action_drop(M); }
 			}
 		}
 		else {
@@ -660,13 +666,13 @@ control ncl_compute(inout headers H,
 				if (((bool) _tmp__20_icmp_conv_3_sub[31:31])) {
 					mem_rmw_o_4_mem_b0(call_i47_i, ((bit<16>) _hash_4_xor32_u15.get({H.ncp_data_1_0[0].value})));
 					mem_rmw_o_5_mem_b1(call_i43_i, ((bit<16>) _hash_5_crc32_u15.get({H.ncp_data_1_0[0].value})));
-					mem_rmw_o_6_mem_b2(call_i_i53, ((bit<16>) _hash_6_crc64_u15.get({H.ncp_data_1_0[0].value})));
+					mem_rmw_o_6_mem_b2(call_i_i55, ((bit<16>) _hash_6_crc64_u15.get({H.ncp_data_1_0[0].value})));
 					if (call_i47_i)
 						_lv__6__2 = ((bit<1>) call_i43_i);
 					else
 						_lv__6__2 = 0;
 					if (((bool) _lv__6__2))
-						_lv__7_spec_select74_i = ((bit<1>) call_i_i53);
+						_lv__7_spec_select74_i = ((bit<1>) call_i_i55);
 					else
 						_lv__7_spec_select74_i = 0;
 					ncvm_xor_8_1_1(H.ncp_data_1_4[0].value, _lv__7_spec_select74_i, 1);
@@ -836,9 +842,9 @@ control MainIngress(inout headers H,
 	network() net;
 	apply {
 		if (H.ncp.isValid()) {
+			M.ncl_act_arg = ((bit<16>) H.ncp.h_dst);
 			if (!M.ncl_no_op) {
-				M.ncl_act = _ncl_default_action_;
-				M.ncl_act_arg = _ncl_default_action_arg_;
+				ncvm_action_default(H, M);
 				ncl_compute.apply(H, M, IM);
 			}
 			ncl_network.apply(H, M, IM, DIM, TIM);
@@ -875,7 +881,7 @@ parser MainEgressParser(packet_in P,
 	state parse_udp {
 		P.extract(H.udp);
 		transition select(H.udp.dst_port) {
-			_ncl_udp_port_: parse_ncp;
+			_ncl_udp_port_ .. _ncl_udp_port_hi_: parse_ncp;
 			default: accept;
 		}
 	}
@@ -919,7 +925,7 @@ control MainEgress(inout headers H,
 		H.udp.checksum = 0;
 	}
 	action device_port( bit<8> id) {	H.ncp.d_dst = id; }
-	@name(".ncrt.egress.tbl.dev.ports")
+	@name(".ncrt.egress.tbl.ports")
 	table ncl_port_tbl {
 		key = { EM.egress_port : exact; }
 		actions = {host_port; device_port; drop; }
@@ -947,7 +953,7 @@ control MainEgress(inout headers H,
 		if ((dst_port != 0))
 			H.udp.dst_port = dst_port;
 	}
-	@name(".ncrt.egress.tbl.udp.adj.ports")
+	@name(".ncrt.egress.tbl.udp.adj")
 	table ncl_udp_adj_tbl {
 		key = {
 			H.ncp.cid: exact;
