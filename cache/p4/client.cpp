@@ -273,11 +273,6 @@ int main(int argc, char **argv) {
         std::shuffle(keys.begin(), keys.end(), rng);
         threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
       }
-
-      // for (auto &k : threadKeys[i]) {
-      //   std::cout << k << '-';
-      // }
-      // std::cout << "###############\n";
     }
 
     std::vector<std::thread> threads;
@@ -286,7 +281,9 @@ int main(int argc, char **argv) {
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
     for (auto tid = 0; tid < opt.Threads; ++tid) {
+
       auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
+
       threads.emplace_back(client, tid, opt.ServerIp, serverPort,
                            threadKeys[tid], std::ref(stats.at(tid)), sigstart);
     }
@@ -303,7 +300,7 @@ int main(int argc, char **argv) {
     for (auto i = 0; i < stats.size(); ++i) {
       double latency = (stats.at(i).duration / 1000.0);
       double throughput = stats.at(i).queries / ((double) latency);
-      std::cout << "stats." << i << ": " << stats.at(i).queries << " queries - " << stats.at(i).duration << " seconds --> " << throughput << "/second\n";
+      // std::cout << "stats." << i << ": " << stats.at(i).queries << " queries - " << stats.at(i).duration << " seconds --> " << throughput << "/second\n";
       // std::cout << "Statistics for thread '" << i << "'\n";
       // stats.at(i).print(std::cout) << '\n';
       totalThroughput += throughput;

@@ -39,16 +39,21 @@ hpdc-setup-ips:
 	ssh hpdc-gnode4 sudo ip addr replace 42.0.0.4/24 dev ens4f0
 
 hpdc-setup-pull:
-	ssh hpdc-gnode1 "cd ncl-p4 && git pull"
-	ssh hpdc-gnode2 "cd ncl-p4 && git pull"
-	ssh hpdc-gnode3 "cd ncl-p4 && git pull"
-	ssh hpdc-gnode4 "cd ncl-p4 && git pull"
+	ssh hpdc-gnode1 "cd ncl-p4 && git reset --hard && git pull"
+	ssh hpdc-gnode2 "cd ncl-p4 && git reset --hard && git pull"
+	ssh hpdc-gnode3 "cd ncl-p4 && git reset --hard && git pull"
+	ssh hpdc-gnode4 "cd ncl-p4 && git reset --hard && git pull"
 
 hpdc-setup-build: hpdc-setup-pull
 	ssh hpdc-gnode1 "cd ncl-p4/cache/p4 && make -B client"
 	ssh hpdc-gnode2 "cd ncl-p4/cache/p4 && make -B client"
 	ssh hpdc-gnode3 "cd ncl-p4/cache/p4 && make -B client"
 	ssh hpdc-gnode4 "cd ncl-p4/cache/p4 && make -B server"
+
+hpdc-run-1:
+	ssh hpdc-gnode1 "cd ncl-p4/cache/p4 && ./client -I 42.0.0.1 -p 4242 --server-port 4242 --multiplier 32 > time.txt"
+	ssh hpdc-gnode2 "cd ncl-p4/cache/p4 && ./client -I 42.0.0.2 -p 4242 --server-port 4242 --multiplier 32 > time.txt"
+	ssh hpdc-gnode3 "cd ncl-p4/cache/p4 && ./client -I 42.0.0.3 -p 4242 --server-port 4242 --multiplier 32 > time.txt"
 
 hosts: client server
 hosts-debug: client-debug server-debug
