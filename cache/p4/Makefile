@@ -45,10 +45,10 @@ hpdc-setup-pull:
 	ssh hpdc-gnode4 "cd ncl-p4 && git pull"
 
 hpdc-setup-build:
-	ssh hpdc-gnode1 "cd ncl-p4/cache/p4 && make client"
-	ssh hpdc-gnode2 "cd ncl-p4/cache/p4 && make client"
-	ssh hpdc-gnode3 "cd ncl-p4/cache/p4 && make client"
-	ssh hpdc-gnode4 "cd ncl-p4/cache/p4 && make server"
+	ssh hpdc-gnode1 "cd ncl-p4/cache/p4 && make -B client"
+	ssh hpdc-gnode2 "cd ncl-p4/cache/p4 && make -B client"
+	ssh hpdc-gnode3 "cd ncl-p4/cache/p4 && make -B client"
+	ssh hpdc-gnode4 "cd ncl-p4/cache/p4 && make -B server"
 
 hosts: client server
 hosts-debug: client-debug server-debug
