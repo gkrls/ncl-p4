@@ -111,8 +111,6 @@ print(f" {EUI('42:42:42:42:42:42')}/{IPAddress('42.42.42.42')} -> ncl-ipmlicit a
 NET.forwarding_table.add_with_multicast(dst_addr=EUI("ff:ff:ff:ff:ff:ff"), mgid=1)
 NET.forwarding_table.set_default_with_multicast(mgid=1)
 print(f" {EUI('ff:ff:ff:ff:ff:ff')} -> mgid 1")
-# Cache = IN.cache
-
 
 
 print("=========================")
