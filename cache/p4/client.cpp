@@ -155,7 +155,7 @@ void interactive_client(uint32_t tid, std::string serverAddr,
 }
 
 void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
-            std::vector<uint64_t> const &keys, statistics *stats,
+            std::vector<uint64_t> const &keys, statistics &stats,
             std::shared_future<void> sigstart) {
   sigstart.wait();
 
@@ -220,12 +220,12 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   }
   auto tEnd = std::chrono::high_resolution_clock::now();
 
-  if (stats) {
-    stats->duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart)
-            .count();
-    stats->queries = keys.size();
-  }
+
+  stats.duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart)
+          .count();
+  stats.queries = keys.size();
+
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
@@ -271,20 +271,21 @@ int main(int argc, char **argv) {
         threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
       }
 
-      for (auto &k : threadKeys[i]) {
-        std::cout << k << '-';
-      }
-      std::cout << "###############\n";
+      // for (auto &k : threadKeys[i]) {
+      //   std::cout << k << '-';
+      // }
+      // std::cout << "###############\n";
     }
 
     std::vector<std::thread> threads;
     std::vector<statistics> stats;
+    stats.resize(opt.Threads);
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
     for (auto tid = 0; tid < opt.Threads; ++tid) {
       auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
       threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                           threadKeys[tid], &stats.data()[tid], sigstart);
+                           threadKeys[tid], std::ref(stats.at(tid)), sigstart);
     }
 
     std::cout << "info: starting " << opt.Threads << " client threads\n";
@@ -293,9 +294,18 @@ int main(int argc, char **argv) {
       if (t.joinable())
         t.join();
 
+    uint64_t totalQueries = 0;
+    double totalThroughput = 0;
+
     for (auto i = 0; i < stats.size(); ++i) {
-      std::cout << "Statistics for thread '" << i << "'\n";
-      stats.at(i).print(std::cout) << '\n';
+      double latency = (stats.at(i).duration / 1000.0);
+      double throughput = stats.at(i).queries / ((double) latency);
+      std::cout << "stats." << i << ": " << stats.at(i).queries << " queries - " << stats.at(i).duration << " seconds --> " << throughput << "/second\n";
+      // std::cout << "Statistics for thread '" << i << "'\n";
+      // stats.at(i).print(std::cout) << '\n';
+      totalThroughput += throughput;
     }
+
+    std::cout << "Total throughput: " << totalThroughput << " queries per second\n";
   }
 }

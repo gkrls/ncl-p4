@@ -120,21 +120,28 @@ void server(uint32_t tid,
     }
     p.key = be64toh(p.key);
 
+#ifdef DEBUG
     log(tid) << "received op:" << (uint16_t)p.op << " key: " << p.key << " : "
              << (char *)&p.key << '\n';
-
+#endif
     if (auto It = kvs.find(p.key); It != kvs.end()) {
+
+#ifdef DEBUG
       log(tid) << "key found\n";
+#endif
       p.op = cache_op::GET_RS;
       p.mask = htonl((0xffffffff << 4) - 1); // just set all ones for now
       p.v[0] = htonl(It->second.at(0));
       p.v[1] = htonl(It->second.at(1));
       p.v[2] = htonl(It->second.at(2));
       p.v[3] = htonl(It->second.at(3));
-    } else {
-      log(tid) << "key not found\n";
     }
 
+#ifdef DEBUG
+    else {
+      log(tid) << "key not found\n";
+    }
+#endif
     sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr*) &inaddr, inlen);
   }
 }
