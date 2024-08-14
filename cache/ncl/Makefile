@@ -71,16 +71,16 @@ hpdc-servers-clone: hpdc-servers-setup-ips
 	ssh hpdc-gnode4 "rm -rf ncl-p4 && git clone https://github.com/gkrls/ncl-p4"
 
 hpdc-servers-compile: hpdc-servers-pull
-	ssh hpdc-gnode1 "cd ncl-p4/cache/ncl && make client"
-	ssh hpdc-gnode2 "cd ncl-p4/cache/ncl && make client"
-	ssh hpdc-gnode3 "cd ncl-p4/cache/ncl && make client"
-	ssh hpdc-gnode4 "cd ncl-p4/cache/ncl && make server"
+	ssh hpdc-gnode1 "cd ncl-p4/cache/ncl && make -B client"
+	ssh hpdc-gnode2 "cd ncl-p4/cache/ncl && make -B client"
+	ssh hpdc-gnode3 "cd ncl-p4/cache/ncl && make -B client"
+	ssh hpdc-gnode4 "cd ncl-p4/cache/ncl && make -B server"
 
 hpdc-servers-compile-debug: hpdc-servers-pull
-	ssh hpdc-gnode1 "cd ncl-p4/cache/ncl && make client-debug"
-	ssh hpdc-gnode2 "cd ncl-p4/cache/ncl && make client-debug"
-	ssh hpdc-gnode3 "cd ncl-p4/cache/ncl && make client-debug"
-	ssh hpdc-gnode4 "cd ncl-p4/cache/ncl && make server-debug"
+	ssh hpdc-gnode1 "cd ncl-p4/cache/ncl && make -B client-debug"
+	ssh hpdc-gnode2 "cd ncl-p4/cache/ncl && make -B client-debug"
+	ssh hpdc-gnode3 "cd ncl-p4/cache/ncl && make -B client-debug"
+	ssh hpdc-gnode4 "cd ncl-p4/cache/ncl && make -B server-debug"
 
 clean:
 	rm -rf ${BUILD}

@@ -32,15 +32,27 @@ control expo_reducer( in bitmap_t bitmap_old,
     }
   };
 
-  action update_register() { expo = update.execute(idx); }
+  action update_register() {
+    expo = update.execute(idx);
+  }
 
-  action read_register() { expo = read.execute(idx); }
+  action read_register() {
+    expo = read.execute(idx);
+  }
 
-  action write_register() { expo = write.execute(idx); }
+  action write_register() {
+    expo = write.execute(idx);
+  }
 
   table reduce {
-    key = {bitmap_old: ternary; bitmap_chk: ternary;}
-    actions = {update_register; read_register; write_register; }
+    key = {
+      bitmap_old: ternary;
+      bitmap_chk: ternary;}
+    actions = {
+      update_register;
+      read_register;
+      write_register;
+    }
     const size = 32;
     const entries = {
       (0, 0) : write_register();
@@ -81,15 +93,28 @@ control reducer(in bitmap_t bitmap_old,
     }
   };
 
-  action update_register() { v = update.execute(idx); }
+  action update_register() {
+    v = update.execute(idx);
+  }
 
-  action read_register() { v = read.execute(idx); }
+  action read_register() {
+    v = read.execute(idx);
+  }
 
-  action write_register() { v = write.execute(idx); }
+  action write_register() {
+    v = write.execute(idx);
+  }
 
   table reduce {
-    key = {bitmap_old: ternary; bitmap_chk: ternary;}
-    actions = {update_register; read_register; write_register; }
+    key = {
+      bitmap_old: ternary;
+      bitmap_chk: ternary;
+    }
+    actions = {
+      update_register;
+      read_register;
+      write_register;
+    }
     const size = 32;
     const entries = {
       (0, 0) : write_register();
@@ -109,10 +134,6 @@ control allreduce ( inout headers_t H,
                     inout ingress_intrinsic_metadata_for_tm_t TIM )
 {
 
-  bitmap_t bitmap_old;
-  bitmap_t bitmap_chk;
-  bit<32> count_old;
-
   Register<pair<bitmap_t>, slot_idx_t>(ALLREDUCE_BMP_SLOTS) Bitmap;
 
   RegisterAction<pair<bitmap_t>, slot_idx_t, bitmap_t>(Bitmap) bitmap_record_hi = {
@@ -131,12 +152,22 @@ control allreduce ( inout headers_t H,
     }
   };
 
-  action bitmap_0() { bitmap_old = bitmap_record_lo.execute(H.agg.bmp_idx); }
-  action bitmap_1() { bitmap_old = bitmap_record_hi.execute(H.agg.bmp_idx); }
+  action bitmap_0() {
+    M.agg.bitmap_old = bitmap_record_lo.execute(H.agg.bmp_idx);
+  }
+  action bitmap_1() {
+    M.agg.bitmap_old = bitmap_record_hi.execute(H.agg.bmp_idx);
+  }
 
   table bitmap {
-    key = { H.agg.ver: exact; }
-    actions = { bitmap_0; bitmap_1; NoAction; }
+    key = {
+      H.agg.ver: exact;
+    }
+    actions = {
+      bitmap_0;
+      bitmap_1;
+      NoAction;
+    }
     const size = 2;
     const default_action = NoAction;
     const entries = {
@@ -164,12 +195,21 @@ control allreduce ( inout headers_t H,
     }
   };
 
-  action count_contribution() { count_old = update_counter.execute(H.agg.agg_idx); }
-  action count_retransmission() { count_old = read_counter.execute(H.agg.agg_idx); }
+  action count_contribution() {
+    M.agg.count_old = update_counter.execute(H.agg.agg_idx);
+  }
+  action count_retransmission() {
+    M.agg.count_old = read_counter.execute(H.agg.agg_idx);
+  }
 
   table count {
-    key = { bitmap_chk: ternary; }
-    actions = { count_contribution; count_retransmission; }
+    key = {
+      M.agg.bitmap_chk: ternary;
+    }
+    actions = {
+      count_contribution;
+      count_retransmission;
+    }
     const size = 2;
     const entries = {
       0: count_contribution();
@@ -223,11 +263,20 @@ control allreduce ( inout headers_t H,
     DIM.drop_ctl[0:0] = 0;
   }
 
-  action next_drop() { DIM.drop_ctl[0:0] = 1; }
+  action next_drop() {
+    DIM.drop_ctl[0:0] = 1;
+  }
 
   table next {
-    key = { bitmap_chk: ternary; count_old: ternary; }
-    actions = { next_reflect; next_multicast; next_drop; }
+    key = {
+      M.agg.bitmap_chk: ternary;
+      M.agg.count_old: ternary;
+    }
+    actions = {
+      next_reflect;
+      next_multicast;
+      next_drop;
+    }
     const entries = {
       ( 0, 0): next_drop();      // First packet for slot
       ( 0, 1): next_multicast(); // not seen and count == 1 ==> completed now
@@ -237,58 +286,113 @@ control allreduce ( inout headers_t H,
     }
   }
 
+  action check_bitmap() { M.agg.bitmap_chk = M.agg.bitmap_old & H.agg.mask; }
   apply {
 
-    bitmap_old = 0;
-    bitmap_chk = 0;
-    count_old = 0;
+    // M.agg.bitmap_old = 0;
+    // M.agg.bitmap_chk = 0;
+    // M.agg.count_old = 0;
 
     bitmap.apply();
-    bitmap_chk = bitmap_old & H.agg.mask;
+    check_bitmap();
 
     count.apply();
 
-    RExpo.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.expo);
+    RExpo.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.expo);
 
-    R00.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v00);
-    R01.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v01);
-    R02.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v02);
-    R03.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v03);
-    R04.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v04);
-    R05.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v05);
-    R06.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v06);
-    R07.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v07);
-    R08.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v08);
-    R09.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v09);
-    R10.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v10);
-    R11.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v11);
-    R12.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v12);
-    R13.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v13);
-    R14.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v14);
-    R15.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v15);
-    R16.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v16);
-    R17.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v17);
-    R18.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v18);
-    R19.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v19);
-    R20.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v20);
-    R21.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v21);
-    R22.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v22);
-    R23.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v23);
-    R24.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v24);
-    R25.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v25);
-    R26.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v26);
-    R27.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v27);
-    R28.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v28);
-    R29.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v29);
-    R30.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v30);
-    R31.apply( bitmap_old, bitmap_chk, H.agg.agg_idx, H.agg_data.v31);
+    R00.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v00);
+    R01.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v01);
+    R02.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v02);
+    R03.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v03);
+    R04.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v04);
+    R05.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v05);
+    R06.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v06);
+    R07.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v07);
+    R08.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v08);
+    R09.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v09);
+    R10.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v10);
+    R11.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v11);
+    R12.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v12);
+    R13.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v13);
+    R14.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v14);
+    R15.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v15);
+    R16.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v16);
+    R17.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v17);
+    R18.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v18);
+    R19.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v19);
+    R20.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v20);
+    R21.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v21);
+    R22.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v22);
+    R23.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v23);
+    R24.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v24);
+    R25.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v25);
+    R26.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v26);
+    R27.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v27);
+    R28.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v28);
+    R29.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v29);
+    R30.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v30);
+    R31.apply( M.agg.bitmap_old, M.agg.bitmap_chk, H.agg.agg_idx, H.agg_data.v31);
 
     next.apply();
   }
 }
 
 
+control networking( inout headers_t H,
+                    inout ingress_metadata_t M,
+                    in ingress_intrinsic_metadata_t IM,
+                    in ingress_intrinsic_metadata_from_parser_t PIM,
+                    inout ingress_intrinsic_metadata_for_deparser_t DIM,
+                    inout ingress_intrinsic_metadata_for_tm_t TIM )
+{
+  action send_to_port(PortId_t port) {
+    DIM.drop_ctl[0:0] = 0x0;
+    TIM.ucast_egress_port = port;
+  }
 
+  action flood() {
+    DIM.drop_ctl[0:0] = 0x0;
+    TIM.mcast_grp_a = FLOOD_MULTICAST_GROUP_ID;
+    TIM.level1_exclusion_id = (bit<16>) IM.ingress_port;
+  }
+
+  table forwarding_table {
+    key = {H.eth.dst_addr: exact;}
+    actions = { send_to_port; flood; }
+    const default_action = flood;
+    const size = FORWARDING_TABLE_CAPACITY;
+  }
+
+  action arp_resolve(mac_addr_t mac) {
+    H.arp.opcode = ARP_RES;
+    H.arp_ip4.dst_hw_addr = H.arp_ip4.src_hw_addr;
+    H.arp_ip4.src_hw_addr = mac;
+    ip4_addr_t tmp = H.arp_ip4.dst_proto_addr;
+    H.arp_ip4.dst_proto_addr = H.arp_ip4.src_proto_addr;
+    H.arp_ip4.src_proto_addr = tmp;
+    H.eth.dst_addr = H.eth.src_addr;
+    H.eth.src_addr = mac;
+  }
+
+  table arp_table {
+    key = {
+      H.arp_ip4.dst_proto_addr: exact;
+    }
+    actions = {
+      arp_resolve; NoAction;
+    }
+    const default_action = NoAction;
+    const size = ARP_TABLE_CAPACITY;
+  }
+
+  apply {
+    TIM.bypass_egress = 1;
+    if (H.arp_ip4.isValid() && H.arp.opcode == ARP_REQ) {
+      arp_table.apply();
+    }
+    forwarding_table.apply();
+  }
+}
 
 
 control ingress( inout headers_t H,
@@ -303,9 +407,9 @@ control ingress( inout headers_t H,
   networking() net;
 
   apply {
-    if (H.agg.isValid())
+    if (H.agg.isValid()) {
       agg.apply(H, M, IM, PIM, DIM, TIM);
-    else {
+    } else {
       net.apply(H, M, IM, PIM, DIM, TIM);
     }
   }
@@ -333,15 +437,21 @@ control egress( inout headers_t H,
   }
 
   table allreduce_sender {
-    key = { IM.egress_port: exact; }
-    actions = { send_to_worker; NoAction;}
+    key = {
+      IM.egress_port: exact;
+    }
+    actions = {
+      send_to_worker;
+      NoAction;
+    }
     size = ALLREDUCE_WORKER_TABLE_CAPACITY;
     const default_action = NoAction;
   }
 
   apply {
-    if (H.agg.isValid())
+    if (H.agg.isValid()) {
       allreduce_sender.apply();
+    }
   }
 }
 

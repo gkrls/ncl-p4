@@ -85,8 +85,6 @@ header udp_h {
 // Agg
 // -----------------------------------------
 
-struct pair_t<T> { T hi; T lo; }
-
 typedef bit<16> slot_idx_t;
 typedef bit<8>  slot_ver_t;
 typedef bit<32> bitmap_t;
@@ -95,7 +93,10 @@ typedef bit<16> count_t;
 typedef bit<(ALLREDUCE_VALUE_BYTES * 8)> value_t;
 typedef bit<(ALLREDUCE_EXPONENT_BYTES * 8)> expo_t;
 
-struct pair<T> { T hi; T lo; }
+struct pair<T> {
+  T hi;
+  T lo;
+}
 
 header agg_h {
   slot_ver_t ver;
@@ -151,7 +152,15 @@ struct headers_t {
   agg_data_h agg_data;
 }
 
-struct ingress_metadata_t { }
+struct allreduce_metadata {
+  bitmap_t bitmap_old;
+  bitmap_t bitmap_chk;
+  bit<32> count_old;
+}
+
+struct ingress_metadata_t {
+  allreduce_metadata agg;
+}
 
 struct egress_metadata_t { }
 

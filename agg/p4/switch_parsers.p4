@@ -133,7 +133,6 @@ control egress_deparser(packet_out P,
           H.ip4.dst_addr
         });
     }
-
     P.emit(H);
   }
 }
