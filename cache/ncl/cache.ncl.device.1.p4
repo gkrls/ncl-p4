@@ -592,10 +592,10 @@ control ncl_compute(inout headers H,
 		const size = 8192;
 	}
 	apply {
-		_lv__0_cms_i[0] = ((_box_h<bit<32>>) {0});
-		_lv__0_cms_i[1] = ((_box_h<bit<32>>) {0});
-		_lv__0_cms_i[2] = ((_box_h<bit<32>>) {0});
-		_lv__0_cms_i[3] = ((_box_h<bit<32>>) {0});
+		// _lv__0_cms_i[0] = ((_box_h<bit<32>>) {0});
+		// _lv__0_cms_i[1] = ((_box_h<bit<32>>) {0});
+		// _lv__0_cms_i[2] = ((_box_h<bit<32>>) {0});
+		// _lv__0_cms_i[3] = ((_box_h<bit<32>>) {0});
 		_mem_lut_Index.apply();
 		bool _tmp__2_call_i21 = _mem_lut_Bitmap.apply().hit;
 		if (_tmp__2_call_i21) {
