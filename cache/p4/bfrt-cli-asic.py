@@ -94,7 +94,7 @@ def is_bit_set(value, i):
 cache_entries = {}
 num_in_cache = 0
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) as f:
-    lines = f.read().splitlines()
+    lines = f.read().strip().splitlines()
     num_in_cache = round(CACHE / 100 * len(lines))
 
     print(f"\nWill insert {CACHE}% of keys in data.txt ({num_in_cache} keys) in the cache!!\n")
@@ -104,7 +104,6 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) 
             break
         kv = l.strip().split('=', 1)
         cache_entries[kv[0]] = kv[1]
-
 
 print("Inserting cache entries:")
 for i, (k, v) in enumerate(cache_entries.items()):
