@@ -250,6 +250,8 @@ void loadKeys(const char *f, std::vector<uint64_t> &keys) {
 
 int main(int argc, char **argv) {
   opt.parse(argc, argv);
+  if (opt.Help)
+    return opt.help(std::cout);
 
   if (opt.Interactive) {
     interactive_client(0, opt.ServerIp, opt.ServerPort);

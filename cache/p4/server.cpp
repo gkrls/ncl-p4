@@ -180,6 +180,8 @@ void loadKvs(const char *f,
 
 int main(int argc, char **argv) {
   opt.parse(argc, argv);
+  if (opt.Help)
+    return opt.help(std::cout);
 
   std::unordered_map<uint64_t, std::array<uint32_t, 4>> kvs;
   loadKvs("data.txt", kvs);
