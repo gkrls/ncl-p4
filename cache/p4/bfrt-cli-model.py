@@ -3,7 +3,7 @@ import json
 import os
 
 # Percentage of keys in data.txt that will be in the cache
-CACHE=20
+CACHE=100
 
 SWITCH = {'name': "s1", 'mac': "42:00:00:00:00:00", 'ip': "42.0.0.0"}
 HOSTS = {
@@ -113,6 +113,7 @@ for i, (k, v) in enumerate(cache_entries.items()):
     Cache.mask.add_with_read_mask(k=k_enc, mask=mask)
     Cache.Valid.add(REGISTER_INDEX=i, lo=1)
 
+    # val = bytearray(v)
     val = bytes(v, 'utf-8')
 
     if is_bit_set(mask, 0):
@@ -123,10 +124,10 @@ for i, (k, v) in enumerate(cache_entries.items()):
             val[4:8], byteorder='little'))
     if is_bit_set(mask, 2):
         Cache.Cache3.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[8:16], byteorder='little'))
+            val[8:12], byteorder='little'))
     if is_bit_set(mask, 3):
-        Cache.Cache3.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[16:32], byteorder='little'))
+        Cache.Cache4.add(REGISTER_INDEX=i, f1=int.from_bytes(
+            val[12:16], byteorder='little'))
 
     print(
         f"  key: 0x{k_enc:016x}/{k_enc} --> cacheline: {i} | slot: {slot}, mask: {mask:032b} / {val_bytes:2d}B,{val_words}W | raw: {k} -> {v}")
