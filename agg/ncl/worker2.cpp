@@ -24,6 +24,7 @@
 #include <thread>
 #include <tuple>
 #include <unistd.h> // for close()
+#include <net/if.h>
 
 #include "worker_utils.h"
 
@@ -246,13 +247,13 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
   device.sin_port = htons(opt.DevicePort);
 
-  if (opt.Connect) {
-    if (connect(soc, (struct sockaddr*)&device, sizeof(device)) < 0) {
-        thread(tid) << "failed to connect UDP socket to device" << std::endl;
-        close(soc);
-        return;
-    }
-  }
+  // if (opt.Connect) {
+  //   if (connect(soc, (struct sockaddr*)&device, sizeof(device)) < 0) {
+  //       thread(tid) << "failed to connect UDP socket to device" << std::endl;
+  //       close(soc);
+  //       return;
+  //   }
+  // }
 
   uint32_t start, end;
   getIndexRangeForThread(tid, start, end);
@@ -401,12 +402,39 @@ int main(int argc, char **argv) {
   std::memset(soc, 0, sizeof(int));
   std::memset(addr, 0, sizeof(sockaddr_in));
 
+  sockaddr_in device;
+  device.sin_family = AF_INET;
+  device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
+  device.sin_port = htons(opt.DevicePort);
+
+  const char *interface_name = "ens4f0"; // Replace with your network interface name
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, interface_name, IFNAMSIZ - 1);
+
   for (auto i = 0; i < opt.Threads; ++i) {
     soc[i] = socket(AF_INET, SOCK_DGRAM, 0);
     addr[i].sin_family = AF_INET;
     addr[i].sin_addr.s_addr = inet_addr(opt.IP.c_str());
     addr[i].sin_port = htons(opt.Port + i);
 
+
+    if (opt.Connect) {
+      if (connect(soc[i], (struct sockaddr*)&device, sizeof(device)) < 0) {
+          worker() << "failed to connect UDP socket to device\n";
+          // close(soc);
+          exit(EXIT_FAILURE);
+      }
+    }
+
+    if (opt.Bind) {
+      if (setsockopt(soc[i], SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
+          worker() << "failed to bind socket to ens4f0\n";
+          // perror("setsockopt");
+          // close(sockfd)?;
+          exit(EXIT_FAILURE);
+      }
+    }
     int reuse = 1;
     if (setsockopt(soc[i], SOL_SOCKET, SO_REUSEADDR, (void *)&reuse,
                    sizeof(reuse)) < 0) {
@@ -452,7 +480,7 @@ int main(int argc, char **argv) {
       return 1;
 
     double currentThroughput =
-        ((double)opt.Size * opt.World) / (((double) us) * 1000);
+        ((double)opt.Size * opt.World) / (((double) us) * 1000000);
     throughput += currentThroughput;
     latency += us;
 
