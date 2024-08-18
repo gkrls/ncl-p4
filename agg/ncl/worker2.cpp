@@ -419,15 +419,6 @@ int main(int argc, char **argv) {
     addr[i].sin_addr.s_addr = inet_addr(opt.IP.c_str());
     addr[i].sin_port = htons(opt.Port + i);
 
-
-    if (opt.Connect) {
-      if (connect(soc[i], (struct sockaddr*)&device, sizeof(device)) < 0) {
-          worker() << "failed to connect UDP socket to device\n";
-          // close(soc);
-          exit(EXIT_FAILURE);
-      }
-    }
-
     if (opt.Bind) {
       if (setsockopt(soc[i], SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
           worker() << "failed to bind socket to ens4f0\n";
@@ -436,6 +427,7 @@ int main(int argc, char **argv) {
           exit(EXIT_FAILURE);
       }
     }
+
     int reuse = 1;
     if (setsockopt(soc[i], SOL_SOCKET, SO_REUSEADDR, (void *)&reuse,
                    sizeof(reuse)) < 0) {
@@ -448,6 +440,13 @@ int main(int argc, char **argv) {
       worker() << "error: failed to bind socket to " << opt.IP << "."
                << ntohs(addr[i].sin_port) << '\n';
       return 0;
+    }
+    if (opt.Connect) {
+      if (connect(soc[i], (struct sockaddr*)&device, sizeof(device)) < 0) {
+          worker() << "failed to connect UDP socket to device\n";
+          // close(soc);
+          exit(EXIT_FAILURE);
+      }
     }
   }
 
