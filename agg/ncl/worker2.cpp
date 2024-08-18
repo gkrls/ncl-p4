@@ -310,14 +310,9 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
-  uint32_t r = 0;
-
   while (true) {
     // receive burst of opt.Rx messages
-    int received = recvmmsg(soc, &msg[r], opt.Rx, 0, nullptr);
-    if (received == 0)
-      continue;
-    std::cout << "RECEIVED: " << received << "\n";
+    int received = recvmmsg(soc, msg, opt.Rx, 0, nullptr);
 
     totalReceived += received;
     if (totalReceived >= opt.PacketsPerThread) {
@@ -326,8 +321,8 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
     }
 
     for (auto i = 0; i < received; ++i) {
-      auto *ih = (ncrt::ncl_h *)iov[r + i * 2].iov_base;
-      auto *id = (uint32_t *)iov[r + i * 2 + 1].iov_base;
+      auto *ih = (ncrt::ncl_h *)iov[i * 2].iov_base;
+      auto *id = (uint32_t *)iov[i * 2 + 1].iov_base;
 
       ih->ncp.h_src = opt.Rank;
       ih->ncp.h_dst = 0;
@@ -345,16 +340,15 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
       ih->agg.expo = htonl(*expo);
 
       // next 32 values
-      iov[r + i * 2 + 1].iov_base = &data[offset];
+      iov[i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-      sendmsg(soc, &msg[r + i].msg_hdr, 0); // one by one
+      sendmsg(soc, &msg[i].msg_hdr, 0); // one by one
 #endif
     }
 #ifdef RX_BURST
     sendmmsg(soc, msg, received, 0); // burst
 #endif
-    r = (r + received) % opt.Window;
   }
 }
 
