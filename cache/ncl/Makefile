@@ -8,7 +8,7 @@ ifdef RX_BURST
     CXXFLAGS += -DRX_BURST
 endif
 
-compile-ncl:
+ncl:
 	${NCLANG} -ncc -x ncl -ncl-is-device -ncl-target tna -ncl-device-id 1 -emit-asm \
 	${NCLSRC} -o $(shell pwd)/cache.ncl.device.1.p4 \
 	-mncvm --p4-no-switch-statements -mncvm --speculate=1 \

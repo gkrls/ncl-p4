@@ -163,10 +163,14 @@ void interactive_client(uint32_t tid, std::string serverAddr,
 
     createGetRequest(p.cache, k);
 
+    auto tStart = std::chrono::high_resolution_clock::now();
     sendto(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
     recvfrom(soc, &q, NCL_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
+
     if (q.cache.op == cache_op::GET_RQ)
-      std::cout << "  key not found\n";
+      std::cout << "  key not found " << "(" << duration << "us)\n";
     else {
       q.cache.v[0] = ntohl(q.cache.v[0]);
       q.cache.v[1] = ntohl(q.cache.v[1]);
@@ -174,7 +178,7 @@ void interactive_client(uint32_t tid, std::string serverAddr,
       q.cache.v[3] = ntohl(q.cache.v[3]);
       char val[17] = {0};
       strncpy(val, (char *)&q.cache.v, 16);
-      std::cout << "  key found with value: " << val << '\n';
+      std::cout << "  key found with value: " << val << "(" << duration << "us)\n";
     }
   }
 

@@ -1,0 +1,49 @@
+{
+  "__meta__": {
+    "compiler": {
+      "build": "Debug",
+      "commit": "b9c8ebd",
+      "version": "0.1.0"
+    },
+    "sources": [
+      "/home/gk/vbox-share/netcl-ubuntu-22.04/ncl-p4/packet-latency/plrn-ncl/paxos-lrn-orig.cpp"
+    ]
+  },
+  "compute": {
+    "1": {
+      "kernel": {
+        "demangled": "learner(msg_type&, unsigned int&, unsigned short, unsigned short&, unsigned char&, unsigned int*)",
+        "mangled": "_Z7learnerR8msg_typeRjtRtRhPj"
+      },
+      "spec": {
+        "bytes": [
+          4,
+          4,
+          2,
+          2,
+          1,
+          4
+        ],
+        "counts": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          8
+        ],
+        "names": [
+          "type",
+          "instance",
+          "round",
+          "vote_round",
+          "vote",
+          "val"
+        ]
+      }
+    }
+  },
+  "memory": {
+    "managed": null
+  }
+}

@@ -7,9 +7,9 @@
 
 #define ALLREDUCE_MULTICAST_GRPOUP_ID   FLOOD_MULTICAST_GROUP_ID
 #define ALLREDUCE_UDP_PORT              4242
-#define ALLREDUCE_WORKERS               2
-#define ALLREDUCE_THREADS               32 // Leave this high for now
-#define ALLREDUCE_WINDOW                32 // Leave this high for now
+#define ALLREDUCE_WORKERS               4
+#define ALLREDUCE_THREADS               8 // Leave this high for now
+#define ALLREDUCE_WINDOW                64 // Leave this high for now
 #define ALLREDUCE_VALUE_BYTES           4
 #define ALLREDUCE_EXPONENT_BYTES        4
 

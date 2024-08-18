@@ -1,0 +1,241 @@
+{
+  "__meta__": {
+    "compiler": {
+      "build": "Debug",
+      "commit": "b9c8ebd",
+      "version": "0.1.0"
+    },
+    "sources": [
+      "/home/gk/vbox-share/netcl-ubuntu-22.04/ncl-p4/packet-latency/cache-ncl/cache.ncl"
+    ]
+  },
+  "compute": {
+    "1": {
+      "kernel": {
+        "demangled": "query(unsigned long, unsigned int*, op_t&, unsigned int&, bool&)",
+        "mangled": "_Z5querymPjR4op_tRjRb"
+      },
+      "spec": {
+        "bytes": [
+          8,
+          4,
+          1,
+          4,
+          1
+        ],
+        "counts": [
+          1,
+          4,
+          1,
+          1,
+          1
+        ],
+        "names": [
+          "key",
+          "val",
+          "op",
+          "mask",
+          "hot"
+        ]
+      }
+    }
+  },
+  "memory": {
+    "managed": {
+      "1": {
+        "bytes": {
+          "key": [
+            1
+          ],
+          "val": []
+        },
+        "capacity": 4096,
+        "id": 1,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.Valid0",
+        "sign": false
+      },
+      "10": {
+        "bytes": {
+          "key": [
+            4
+          ],
+          "val": []
+        },
+        "capacity": 16384,
+        "id": 10,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.c3",
+        "sign": false
+      },
+      "11": {
+        "bytes": {
+          "key": [
+            1
+          ],
+          "val": []
+        },
+        "capacity": 32768,
+        "id": 11,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.b0",
+        "sign": false
+      },
+      "12": {
+        "bytes": {
+          "key": [
+            1
+          ],
+          "val": []
+        },
+        "capacity": 32768,
+        "id": 12,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.b1",
+        "sign": false
+      },
+      "13": {
+        "bytes": {
+          "key": [
+            1
+          ],
+          "val": []
+        },
+        "capacity": 32768,
+        "id": 13,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.b2",
+        "sign": false
+      },
+      "2": {
+        "bytes": {
+          "key": [
+            1
+          ],
+          "val": []
+        },
+        "capacity": 4096,
+        "id": 2,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.Valid1",
+        "sign": false
+      },
+      "3": {
+        "bytes": {
+          "key": [
+            4
+          ],
+          "val": []
+        },
+        "capacity": 4096,
+        "id": 3,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.Stats0",
+        "sign": false
+      },
+      "4": {
+        "bytes": {
+          "key": [
+            4
+          ],
+          "val": []
+        },
+        "capacity": 4096,
+        "id": 4,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.Stats1",
+        "sign": false
+      },
+      "5": {
+        "bytes": {
+          "key": [
+            8
+          ],
+          "val": [
+            2
+          ]
+        },
+        "capacity": 4096,
+        "id": 5,
+        "locs": [],
+        "lut": {
+          "action_none": "NoAction",
+          "action_read": "ncvm.mem.managed.lut.Index.Read",
+          "match": "exact"
+        },
+        "name": "ncvm.mem.managed.lut.Index",
+        "sign": false
+      },
+      "6": {
+        "bytes": {
+          "key": [
+            8
+          ],
+          "val": [
+            4
+          ]
+        },
+        "capacity": 8192,
+        "id": 6,
+        "locs": [],
+        "lut": {
+          "action_none": "NoAction",
+          "action_read": "ncvm.mem.managed.lut.Bitmap.Read",
+          "match": "exact"
+        },
+        "name": "ncvm.mem.managed.lut.Bitmap",
+        "sign": false
+      },
+      "7": {
+        "bytes": {
+          "key": [
+            4
+          ],
+          "val": []
+        },
+        "capacity": 16384,
+        "id": 7,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.c0",
+        "sign": false
+      },
+      "8": {
+        "bytes": {
+          "key": [
+            4
+          ],
+          "val": []
+        },
+        "capacity": 16384,
+        "id": 8,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.c1",
+        "sign": false
+      },
+      "9": {
+        "bytes": {
+          "key": [
+            4
+          ],
+          "val": []
+        },
+        "capacity": 16384,
+        "id": 9,
+        "locs": [],
+        "lut": {},
+        "name": "ncvm.mem.managed.c2",
+        "sign": false
+      }
+    }
+  }
+}

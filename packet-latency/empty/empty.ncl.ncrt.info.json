@@ -1,0 +1,16 @@
+{
+  "__meta__": {
+    "compiler": {
+      "build": "Debug",
+      "commit": "b9c8ebd",
+      "version": "0.1.0"
+    },
+    "sources": [
+      "/home/gk/vbox-share/netcl-ubuntu-22.04/ncl-p4/packet-latency/empty/empty.ncl"
+    ]
+  },
+  "compute": {},
+  "memory": {
+    "managed": null
+  }
+}
