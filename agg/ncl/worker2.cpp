@@ -376,7 +376,8 @@ uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows,
   start.set_value();
   auto tStart = std::chrono::high_resolution_clock::now();
   for (auto &t : threads)
-    t.join();
+    if (t.joinable())
+      t.join();
   auto tEnd = std::chrono::high_resolution_clock::now();
 
   // return 1024;
@@ -479,20 +480,39 @@ int main(int argc, char **argv) {
     if (!us)
       return 1;
 
-    double currentThroughput =
-        ((double)opt.Size * opt.World) / (((double) us) * 1000000);
+    // Calculate throughput in values per second
+    double currentThroughput = ((double)opt.Size * opt.World) / (((double)us) * 1e-6);  // us to seconds
     throughput += currentThroughput;
+
+    // Accumulate total latency
     latency += us;
 
-    double gbps = ((double)(opt.Size * 4 * 8)) / (((double) us) * 1000);
+    // Calculate bandwidth in Gbps (Gigabits per second)
+    // Note: opt.Size is in bytes, so multiply by 8 to convert to bits
+    double gbps = ((double)opt.Size * 8 * opt.World) / (((double)us) * 1e-9);  // us to seconds
 
+    // Print the results
     worker() << "AllReduce " << (opt.Size * opt.World) << " | "
              << "(" << opt.Size << "/" << (opt.Size * sizeof(uint32_t))
              << "B per worker) : took " << std::setw(2) << std::setfill('0')
              << (us / 1000000) << ":" << std::setw(3) << std::setfill('0')
-             << ((us % 1000000) / 1000) << ", " << std::fixed
-             << std::setprecision(2) << currentThroughput << " values/sec "
+             << ((us % 1000000) / 1000) << "s, " << std::fixed
+             << std::setprecision(2) << currentThroughput << " values/sec, "
              << gbps << " Gbps" << std::endl;
+    // double currentThroughput =
+    //     ((double)opt.Size * opt.World) / (((double) us) * 1000000);
+    // throughput += currentThroughput;
+    // latency += us;
+
+    // double gbps = ((double)(opt.Size * 4 * 8)) / (((double) us) * 1000);
+
+    // worker() << "AllReduce " << (opt.Size * opt.World) << " | "
+    //          << "(" << opt.Size << "/" << (opt.Size * sizeof(uint32_t))
+    //          << "B per worker) : took " << std::setw(2) << std::setfill('0')
+    //          << (us / 1000000) << ":" << std::setw(3) << std::setfill('0')
+    //          << ((us % 1000000) / 1000) << ", " << std::fixed
+    //          << std::setprecision(2) << currentThroughput << " values/sec "
+    //          << gbps << " Gbps" << std::endl;
   }
 
   // Free memory
@@ -510,7 +530,7 @@ int main(int argc, char **argv) {
   worker() << "Average latency over " << opt.Steps
            << " runs: " << (latency / 1000000) << ":"
            << ((latency % 1000000) / 1000) << ":"
-           << (((latency % 1000000) / 1000) % 1000)  << " (s:m:μ)\n";
+           << ((latency % 1000000) / 1000)  << " (s:m)\n";
   worker() << "Average throughput over " << opt.Steps << " runs: " << throughput
            << " values/sec\n";
 }
