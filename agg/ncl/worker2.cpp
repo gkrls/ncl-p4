@@ -246,6 +246,14 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
   device.sin_port = htons(opt.DevicePort);
 
+  if (opt.Connect) {
+    if (connect(soc, (struct sockaddr*)&device, sizeof(device)) < 0) {
+        thread(tid) << "failed to connect UDP socket to device" << std::endl;
+        close(soc);
+        return;
+    }
+  }
+
   uint32_t start, end;
   getIndexRangeForThread(tid, start, end);
 
@@ -364,14 +372,14 @@ uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows,
 
   // Start the threads
   // Normally we would reuse threads so lets not time thread creation
-  auto tStart = std::chrono::high_resolution_clock::now();
   start.set_value();
+  auto tStart = std::chrono::high_resolution_clock::now();
   for (auto &t : threads)
     t.join();
   auto tEnd = std::chrono::high_resolution_clock::now();
 
   // return 1024;
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tStart)
+  return std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
       .count();
 }
 
@@ -439,22 +447,22 @@ int main(int argc, char **argv) {
   uint64_t latency = 0;
   double throughput = 0;
   for (auto s = 0; s < opt.Steps; ++s) {
-    auto ns = AllReduce(s + 1, soc, windows, versions, &expo, data, opt.Size);
-    if (!ns)
+    auto us = AllReduce(s + 1, soc, windows, versions, &expo, data, opt.Size);
+    if (!us)
       return 1;
 
     double currentThroughput =
-        ((double)opt.Size * opt.World) / (((double)ns) / 1000000000.0);
+        ((double)opt.Size * opt.World) / (((double) us) / 1000000.0);
     throughput += currentThroughput;
-    latency += ns;
+    latency += us;
 
-    double gbps = ((double)(opt.Size * 4 * 8)) / ((double)ns);
+    double gbps = ((double)(opt.Size * 4 * 8)) / ((double) us);
 
     worker() << "AllReduce " << (opt.Size * opt.World) << " | "
              << "(" << opt.Size << "/" << (opt.Size * sizeof(uint32_t))
              << "B per worker) : took " << std::setw(2) << std::setfill('0')
-             << (ns / 1000000000UL) << ":" << std::setw(3) << std::setfill('0')
-             << ((ns % 1000000000) / 1000000) << ", " << std::fixed
+             << (us / 1000000) << ":" << std::setw(3) << std::setfill('0')
+             << ((us % 1000000) / 1000) << ", " << std::fixed
              << std::setprecision(2) << currentThroughput << " values/sec "
              << gbps << " Gbps" << std::endl;
   }
@@ -472,9 +480,9 @@ int main(int argc, char **argv) {
 
   worker() << '\n';
   worker() << "Average latency over " << opt.Steps
-           << " runs: " << (latency / 1000000000UL) << ":"
-           << ((latency % 1000000000UL) / 1000000) << ":"
-           << ((latency % 1000000) / 1000) << " (s:m:μ)\n";
+           << " runs: " << (latency / 1000000) << ":"
+           << ((latency % 1000000) / 1000) << ":"
+           << (((latency % 1000000) / 1000) % 1000)  << " (s:m:μ)\n";
   worker() << "Average throughput over " << opt.Steps << " runs: " << throughput
            << " values/sec\n";
 }

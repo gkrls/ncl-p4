@@ -22,6 +22,7 @@ public:
   bool Perf;
   bool Random;
   bool Pin;
+  bool Connect;
   std::string IP;
   uint16_t Port;
   unsigned Steps;
@@ -84,6 +85,7 @@ public:
                                       "override default starting version", 0,
                                       &Multiplier);
     parser.add<popl::Switch>("", "--random", "Generate random values");
+    parser.add<popl::Switch>("", "--connect", "connect the socket to the device addr/port");
     parser.add<popl::Value<unsigned>>("m", "multiplier",
                                       "multiply the vector size by this value",
                                       1, &Multiplier);
