@@ -490,9 +490,8 @@ int main(int argc, char **argv) {
     // Accumulate total latency
     latency += us;
 
-    // Calculate bandwidth in Gbps (Gigabits per second)
-    // Note: opt.Size is in bytes, so multiply by 8 to convert to bits
-    double gbps = ((double)opt.Size * 8 * opt.World) / (((double)us) * 1000);
+    // Calculate goodput
+    double gbps = ((double) opt.Size * 4 * 8 * opt.World) / (((double)us) * 1000);
 
     // Print the results
     worker() << "AllReduce " << (opt.Size * opt.World) << " | "
