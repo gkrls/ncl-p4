@@ -1,7 +1,7 @@
 #define NUM_WORKERS        4
 #define THREADS_PER_WORKER 8
 #define WINDOW             64
-#define NUM_SLOTS          THREADS_PER_WORKER * WINDOW
+#define NUM_SLOTS          16384 //THREADS_PER_WORKER * WINDOW
 #define SLOT_SIZE          32
 
 using namespace ncl;

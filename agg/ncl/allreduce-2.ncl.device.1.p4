@@ -146,6 +146,13 @@ action ncl_lookup_read_u16(out bit<16> val,  bit<16> value) {val = value; }
 action ncl_lookup_read_u32(out bit<32> val,  bit<32> value) {val = value; }
 action ncl_lookup_read_u64(out bit<64> val,  bit<64> value) {val = value; }
 action ncl_lookup_read_none() { }
+@ncvm("ncrt.action.default")
+action ncvm_action_default(in headers H, inout metadata M) {if ((_ncl_default_action_ == _ncl_action_pass_)) {
+	M.ncl_act = _ncl_action_send_to_host_;
+}
+else {
+	M.ncl_act = _ncl_action_drop_;
+} }
 @ncvm("ncrt.action.drop")
 action ncvm_action_drop(inout metadata M) {
 	M.ncl_act = _ncl_action_drop_;
@@ -347,116 +354,116 @@ control ncl_compute(inout headers H,
                     inout metadata M,
                     in ingress_intrinsic_metadata_t IM) {
 	bit<32> _tmp__8_and;
-	bit<32> call_i61;
 	bit<32> _lv__0_bitmap_0_reg2mem = 0;
+	bit<32> call_i61;
 	@name(".ncvm.mem.net.Agg_fragment_28_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_28_;
-	@name(".ncvm.mem.net.Agg_fragment_2_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_2_;
 	@name(".ncvm.mem.net.Agg_fragment_16_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_16_;
-	@name(".ncvm.mem.net.Agg_fragment_22_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_22_;
-	@name(".ncvm.mem.net.Agg_fragment_31_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_31_;
-	@name(".ncvm.mem.net.Agg_fragment_20_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_20_;
-	@name(".ncvm.mem.net.Agg_fragment_7_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_7_;
-	@name(".ncvm.mem.net.Agg_fragment_13_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_13_;
-	@name(".ncvm.mem.net.Expo")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Expo;
-	@name(".ncvm.mem.net.Agg_fragment_25_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_25_;
-	@name(".ncvm.mem.net.Agg_fragment_1_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_1_;
-	@name(".ncvm.mem.net.Agg_fragment_0_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_0_;
-	@name(".ncvm.mem.net.Agg_fragment_9_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_9_;
-	@name(".ncvm.mem.net.Agg_fragment_21_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_21_;
-	@name(".ncvm.mem.net.Agg_fragment_29_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_29_;
-	@name(".ncvm.mem.net.Agg_fragment_14_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_14_;
-	@name(".ncvm.mem.net.Agg_fragment_6_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_6_;
-	@name(".ncvm.mem.net.Agg_fragment_5_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_5_;
-	@name(".ncvm.mem.net.Agg_fragment_27_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_27_;
 	@name(".ncvm.mem.net.Bitmap_fragment_0_")
 	@hidden
 	Register<bit<32>, bit<16>>(16384) _mem_Bitmap_fragment_0_;
-	@name(".ncvm.mem.net.Agg_fragment_19_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_19_;
-	@name(".ncvm.mem.net.Agg_fragment_11_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_11_;
-	@name(".ncvm.mem.net.Agg_fragment_10_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_10_;
 	@name(".ncvm.mem.net.Agg_fragment_26_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_26_;
+	@name(".ncvm.mem.net.Agg_fragment_12_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_12_;
 	@name(".ncvm.mem.net.Agg_fragment_30_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_30_;
+	@name(".ncvm.mem.net.Agg_fragment_24_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_24_;
 	@name(".ncvm.mem.net.Agg_fragment_15_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_15_;
 	@name(".ncvm.mem.net.Agg_fragment_4_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_4_;
+	@name(".ncvm.mem.net.Agg_fragment_29_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_29_;
 	@name(".ncvm.mem.net.Agg_fragment_3_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_3_;
-	@name(".ncvm.mem.net.Agg_fragment_17_")
+	@name(".ncvm.mem.net.Agg_fragment_7_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_17_;
-	@name(".ncvm.mem.net.Count")
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_7_;
+	@name(".ncvm.mem.net.Agg_fragment_5_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Count;
-	@name(".ncvm.mem.net.Agg_fragment_18_")
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_5_;
+	@name(".ncvm.mem.net.Agg_fragment_27_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_18_;
-	@name(".ncvm.mem.net.Agg_fragment_12_")
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_27_;
+	@name(".ncvm.mem.net.Agg_fragment_19_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_12_;
-	@name(".ncvm.mem.net.Agg_fragment_24_")
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_19_;
+	@name(".ncvm.mem.net.Agg_fragment_13_")
 	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_24_;
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_13_;
+	@name(".ncvm.mem.net.Agg_fragment_11_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_11_;
+	@name(".ncvm.mem.net.Agg_fragment_25_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_25_;
+	@name(".ncvm.mem.net.Agg_fragment_14_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_14_;
 	@name(".ncvm.mem.net.Bitmap_fragment_1_")
 	@hidden
 	Register<bit<32>, bit<16>>(16384) _mem_Bitmap_fragment_1_;
-	@name(".ncvm.mem.net.Agg_fragment_23_")
-	@hidden
-	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_23_;
 	@name(".ncvm.mem.net.Agg_fragment_8_")
 	@hidden
 	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_8_;
+	@name(".ncvm.mem.net.Agg_fragment_2_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_2_;
+	@name(".ncvm.mem.net.Agg_fragment_23_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_23_;
+	@name(".ncvm.mem.net.Agg_fragment_6_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_6_;
+	@name(".ncvm.mem.net.Agg_fragment_17_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_17_;
+	@name(".ncvm.mem.net.Agg_fragment_22_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_22_;
+	@name(".ncvm.mem.net.Agg_fragment_20_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_20_;
+	@name(".ncvm.mem.net.Agg_fragment_1_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_1_;
+	@name(".ncvm.mem.net.Agg_fragment_18_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_18_;
+	@name(".ncvm.mem.net.Expo")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Expo;
+	@name(".ncvm.mem.net.Agg_fragment_0_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_0_;
+	@name(".ncvm.mem.net.Count")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Count;
+	@name(".ncvm.mem.net.Agg_fragment_31_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_31_;
+	@name(".ncvm.mem.net.Agg_fragment_21_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_21_;
+	@name(".ncvm.mem.net.Agg_fragment_9_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_9_;
+	@name(".ncvm.mem.net.Agg_fragment_10_")
+	@hidden
+	Register<bit<32>, bit<16>>(32768) _mem_Agg_fragment_10_;
 	RegisterAction<bit<32>, bit<16>, bit<32>>(_mem_Bitmap_fragment_0_) __ra__ncvm_atomic_and_u32_0_0_0_l_0_ = {
 		void apply(inout bit<32> R, out bit<32> O){
 			O = R;
@@ -760,8 +767,8 @@ control ncl_compute(inout headers H,
 		const default_action = ncvm_swi_tbl_0_action_default();
 		const size = 2;
 		const entries = {
-			1 : ncvm_swi_tbl_0_action_0;
-			0 : ncvm_swi_tbl_0_action_1;
+			0 : ncvm_swi_tbl_0_action_0;
+			1 : ncvm_swi_tbl_0_action_1;
 		}
 	}
 	RegisterAction<bit<32>, bit<16>, bit<32>>(_mem_Expo) __ra__ncvm_atomic_write_u32_38_1_0_m_0_ = {
@@ -1124,9 +1131,9 @@ control ncl_compute(inout headers H,
 			mem_rmw_o_35_mem_Count(call_i61, H.ncp_data_1_2[0].value);
 			ncvm_swi_tbl_key_0 = call_i61;
 			switch (ncvm_swi_tbl_0.apply().action_run) {
-				ncvm_swi_tbl_0_action_0 : { ncvm_action_multicast(M, 42); }
-				ncvm_swi_tbl_0_action_1 : { ncvm_action_reflect(M); }
+				ncvm_swi_tbl_0_action_1 : { ncvm_action_multicast(M, 42); }
 				ncvm_swi_tbl_0_action_default : { }
+				ncvm_swi_tbl_0_action_0 : { ncvm_action_reflect(M); }
 			}
 		}
 		return;
@@ -1290,9 +1297,9 @@ control MainIngress(inout headers H,
 	network() net;
 	apply {
 		if (H.ncp.isValid()) {
+			M.ncl_act_arg = ((bit<16>) H.ncp.h_dst);
 			if (!M.ncl_no_op) {
-				M.ncl_act = _ncl_default_action_;
-				M.ncl_act_arg = _ncl_default_action_arg_;
+				ncvm_action_default(H, M);
 				ncl_compute.apply(H, M, IM);
 			}
 			ncl_network.apply(H, M, IM, DIM, TIM);
