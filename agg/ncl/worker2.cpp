@@ -312,7 +312,9 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   while (true) {
     // receive burst of opt.Rx messages
-    int received = recvmmsg(soc, msg, opt.Rx, 0, nullptr);
+    int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
+    if (received == 0)
+      continue;
 
     totalReceived += received;
     if (totalReceived >= opt.PacketsPerThread) {
