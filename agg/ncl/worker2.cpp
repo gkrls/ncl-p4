@@ -452,7 +452,7 @@ int main(int argc, char **argv) {
       return 1;
 
     double currentThroughput =
-        ((double)opt.Size * opt.World) / (((double) us) / 1000000.0);
+        ((double)opt.Size * opt.World) / (((double) us) * 1000);
     throughput += currentThroughput;
     latency += us;
 
