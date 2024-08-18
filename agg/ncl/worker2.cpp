@@ -489,7 +489,7 @@ int main(int argc, char **argv) {
 
     // Calculate bandwidth in Gbps (Gigabits per second)
     // Note: opt.Size is in bytes, so multiply by 8 to convert to bits
-    double gbps = ((double)opt.Size * 8 * opt.World) / (((double)us) * 1e-9);  // us to seconds
+    double gbps = ((double)opt.Size * 8 * opt.World) / (((double)us) * 1000);
 
     // Print the results
     worker() << "AllReduce " << (opt.Size * opt.World) << " | "
