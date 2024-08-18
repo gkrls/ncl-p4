@@ -139,7 +139,7 @@ hpdc-6-servers-compile-debug:
 clean:
 	rm -rf ${BUILD}
 
-build_dir: clean
+build-dir: clean
 	mkdir ${BUILD}
 	mkdir ${BUILD}/log
 
