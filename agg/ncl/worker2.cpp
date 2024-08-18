@@ -456,7 +456,7 @@ int main(int argc, char **argv) {
     throughput += currentThroughput;
     latency += us;
 
-    double gbps = ((double)(opt.Size * 4 * 8)) / ((double) us);
+    double gbps = ((double)(opt.Size * 4 * 8)) / (((double) us) * 1000);
 
     worker() << "AllReduce " << (opt.Size * opt.World) << " | "
              << "(" << opt.Size << "/" << (opt.Size * sizeof(uint32_t))
