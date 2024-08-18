@@ -29,7 +29,7 @@ mininet-bfshell:
 mininet-bfrt:
 	mx s1 SDE=${SDE} SDE_INSTALL=${SDE}/install ${SDE}/run_bfshell.sh -b ${PWD}/bfrt-cli-model.py
 
-mininet-network: build_dir
+mininet-network: build-dir
 	SDE=${SDE} cd ${BUILD} && sudo -E python3 ../network.py
 
 asic: build-dir

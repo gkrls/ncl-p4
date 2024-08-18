@@ -14,6 +14,7 @@
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <net/if.h>
 #include <netinet/in.h> // For sockaddr_in
 #include <ostream>
 #include <sstream>
@@ -24,7 +25,6 @@
 #include <thread>
 #include <tuple>
 #include <unistd.h> // for close()
-#include <net/if.h>
 
 #include "worker_utils.h"
 
@@ -109,7 +109,8 @@ void PrintWorkerInfo(std::ostream &O = std::cout) {
             << ", Size: " << (sizeof(ncrt::ncl_h) + opt.ValuesPerPacket * 4)
             << "B (" << sizeof(ncrt::ncl_h) << " + "
             << (opt.ValuesPerPacket * 4) << ")"
-            << ", Burst: " << opt.Window << '\n';
+            << ", Burst: " << opt.Window << ", rx: " << opt.Rx
+            << ", connect: " << opt.Connect << ", " << opt.Bind << '\n';
 }
 
 void PrintData(uint32_t expo, uint32_t *v, size_t size, size_t n = 8,
@@ -229,8 +230,8 @@ void pinWorkerThread(uint32_t tid) {
   CPU_SET(tid % cores, &cpuset);
   pthread_t this_thread = pthread_self();
   if (pthread_setaffinity_np(this_thread, sizeof(cpu_set_t), &cpuset) != 0) {
-      std::cerr << "Error setting thread affinity." << std::endl;
-      return;
+    std::cerr << "Error setting thread affinity." << std::endl;
+    return;
   }
 }
 
@@ -309,11 +310,14 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
+  uint32_t r = 0;
+
   while (true) {
-    // receive burst of opt.Window messages
-    int received = recvmmsg(soc, msg, opt.Rx, 0, nullptr);
+    // receive burst of opt.Rx messages
+    int received = recvmmsg(soc, &msg[r], opt.Rx, 0, nullptr);
     if (received == 0)
       continue;
+    std::cout << "RECEIVED: " << received << "\n";
 
     totalReceived += received;
     if (totalReceived >= opt.PacketsPerThread) {
@@ -322,8 +326,8 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
     }
 
     for (auto i = 0; i < received; ++i) {
-      auto *ih = (ncrt::ncl_h *)iov[i * 2].iov_base;
-      auto *id = (uint32_t *)iov[i * 2 + 1].iov_base;
+      auto *ih = (ncrt::ncl_h *)iov[r + i * 2].iov_base;
+      auto *id = (uint32_t *)iov[r + i * 2 + 1].iov_base;
 
       ih->ncp.h_src = opt.Rank;
       ih->ncp.h_dst = 0;
@@ -341,15 +345,16 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
       ih->agg.expo = htonl(*expo);
 
       // next 32 values
-      iov[i * 2 + 1].iov_base = &data[offset];
+      iov[r + i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-      sendmsg(soc, &msg[i].msg_hdr, 0); // one by one
+      sendmsg(soc, &msg[r + i].msg_hdr, 0); // one by one
 #endif
     }
 #ifdef RX_BURST
-    sendmmsg(soc, msg, received, 0);    // burst
+    sendmmsg(soc, msg, received, 0); // burst
 #endif
+    r = (r + received) % opt.Window;
   }
 }
 
@@ -408,7 +413,8 @@ int main(int argc, char **argv) {
   device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
   device.sin_port = htons(opt.DevicePort);
 
-  const char *interface_name = "ens4f0"; // Replace with your network interface name
+  const char *interface_name =
+      "ens4f0"; // Replace with your network interface name
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, interface_name, IFNAMSIZ - 1);
@@ -420,11 +426,12 @@ int main(int argc, char **argv) {
     addr[i].sin_port = htons(opt.Port + i);
 
     if (opt.Bind) {
-      if (setsockopt(soc[i], SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-          worker() << "failed to bind socket to ens4f0\n";
-          // perror("setsockopt");
-          // close(sockfd)?;
-          exit(EXIT_FAILURE);
+      if (setsockopt(soc[i], SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr,
+                     sizeof(ifr)) < 0) {
+        worker() << "failed to bind socket to ens4f0\n";
+        // perror("setsockopt");
+        // close(sockfd)?;
+        exit(EXIT_FAILURE);
       }
     }
 
@@ -442,10 +449,10 @@ int main(int argc, char **argv) {
       return 0;
     }
     if (opt.Connect) {
-      if (connect(soc[i], (struct sockaddr*)&device, sizeof(device)) < 0) {
-          worker() << "failed to connect UDP socket to device\n";
-          // close(soc);
-          exit(EXIT_FAILURE);
+      if (connect(soc[i], (struct sockaddr *)&device, sizeof(device)) < 0) {
+        worker() << "failed to connect UDP socket to device\n";
+        // close(soc);
+        exit(EXIT_FAILURE);
       }
     }
   }
@@ -480,7 +487,8 @@ int main(int argc, char **argv) {
       return 1;
 
     // Calculate throughput in values per second
-    double currentThroughput = ((double)opt.Size * opt.World) / (((double)us) * 1e-6);  // us to seconds
+    double currentThroughput =
+        ((double)opt.Size * opt.World) / (((double)us) * 1e-6); // us to seconds
     throughput += currentThroughput;
 
     // Accumulate total latency
@@ -529,7 +537,7 @@ int main(int argc, char **argv) {
   worker() << "Average latency over " << opt.Steps
            << " runs: " << (latency / 1000000) << ":"
            << ((latency % 1000000) / 1000) << ":"
-           << ((latency % 1000000) / 1000)  << " (s:m)\n";
+           << ((latency % 1000000) / 1000) << " (s:m)\n";
   worker() << "Average throughput over " << opt.Steps << " runs: " << throughput
            << " values/sec\n";
 }
