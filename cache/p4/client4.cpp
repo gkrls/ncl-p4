@@ -183,11 +183,34 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   // First packet indicates we not start receiving, start counting time
   // recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
-  for (auto i = 0; i < (opt.Multiplier * keys); ++i) {
-    // sockaddr_in incaddrr;
-    // socklen_t inclen = sizeof(sockaddr_in);
-    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    std::cout << i << "\n";
+  // for (auto i = 0; i < (opt.Multiplier * keys); ++i) {
+  //   // sockaddr_in incaddrr;
+  //   // socklen_t inclen = sizeof(sockaddr_in);
+  //   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  //   std::cout << i << "\n";
+  // }
+  int received_packets = 0;
+  int expected_packets = opt.Multiplier * keys;
+
+  while (received_packets < expected_packets) {
+      auto now = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration_cast<std::chrono::seconds>(now - tStart).count() > 5) {
+          std::cout << "Timeout: Only received " << received_packets << " out of " << expected_packets << " packets\n";
+          break;
+      }
+
+      int received = recvfrom(soc, &q, CACHE_HEADER_SIZE, MSG_DONTWAIT, (sockaddr *)&incaddrr, &inclen);
+      if (received < 0) {
+          if (errno == EWOULDBLOCK || errno == EAGAIN) {
+              // No data available, continue loop
+              continue;
+          } else {
+              std::cerr << "recvfrom error: " << strerror(errno) << std::endl;
+              break;
+          }
+      }
+      received_packets++;
+      std::cout << "Received packet " << received_packets << "\n";
   }
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
