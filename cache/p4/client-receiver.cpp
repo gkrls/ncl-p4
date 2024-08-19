@@ -115,7 +115,8 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length) {
     memset(msgs, 0, sizeof(msgs));
 
     // Split the provided buffer into smaller chunks for each packet
-    size_t chunk_size = length / BATCH_SIZE;
+    size_t chunk_size = sizeof(cache_h); //length / BATCH_SIZE;
+
     for (int i = 0; i < BATCH_SIZE; ++i) {
         buffers[i] = static_cast<char*>(buffer) + (i * chunk_size);
         iovecs[i].iov_base = buffers[i];
