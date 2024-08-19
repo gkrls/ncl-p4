@@ -99,7 +99,7 @@ ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
       }
 
       total_bytes_received += bytes_received;
-      std::cout << "total: " << bytes_received << '\n';
+      std::cout << "total: " << total_bytes_received << '\n';
   }
 
   return total_bytes_received;
