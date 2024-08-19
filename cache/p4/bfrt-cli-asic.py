@@ -8,6 +8,7 @@ CACHE=20
 SWITCH = {'name': "s1", 'mac': "42:00:00:00:00:00", 'ip': "42.0.0.0"}
 HOSTS = {
     "server":  {'mac': "94:6d:ae:8c:e4:7c", 'ip': "42.0.0.4", 'port': 4, 'id': 4},
+
     "client1": {'mac': "10:70:fd:df:a5:aa", 'ip': "42.0.0.1", 'port': 1, 'id': 1},
     "client2": {'mac': "10:70:fd:df:a4:26", 'ip': "42.0.0.2", 'port': 2, 'id': 2},
     "client3": {'mac': "94:6d:ae:8c:ad:74", 'ip': "42.0.0.3", 'port': 3, 'id': 3}}

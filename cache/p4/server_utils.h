@@ -51,6 +51,7 @@ public:
   std::string DeviceMac;
   std::string DeviceIp;
   uint16_t DevicePort;
+  uint32_t Multiplier;
 
 #if defined(__AVX2__)
   bool AVX2Available = true;
@@ -81,6 +82,8 @@ public:
                                          "42.0.0.0", &DeviceIp);
     parser.add<popl::Value<uint16_t>>("", "device-port", "device UDP port",
                                       4242, &DevicePort);
+    parser.add<popl::Value<uint16_t>>("-m", "multiplier", "how many times to run the client thread loop",
+                                      1, &Multiplier);
   }
 
   void parse(int argc, char **argv) {

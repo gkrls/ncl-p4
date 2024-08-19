@@ -137,10 +137,17 @@ void interactive_client(uint32_t tid, std::string serverAddr,
     strncpy((char *)&k, line.data(), line.size());
 
     createGetRequest(p, k);
+    // sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
+    // recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+
+    auto tStart = std::chrono::high_resolution_clock::now();
     sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
+
     if (q.op == cache_op::GET_RQ)
-      std::cout << "  key not found\n";
+      std::cout << "  key not found " << "(" << duration << "us)\n";
     else {
       q.v[0] = ntohl(q.v[0]);
       q.v[1] = ntohl(q.v[1]);
@@ -189,42 +196,71 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h p;
   cache_h q;
 
-  auto tStart = std::chrono::high_resolution_clock::now();
-  for (auto &k : keys) {
-    createGetRequest(p, k);
-    int sent = sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-                      sizeof(server));
-#ifdef DEBUG
-    log(tid) << "query key: " << k << '\n';
-#endif
-    int recvd =
-        recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-#ifdef DEBUG
-    log(tid) << "received: " << recvd << "bytes\n";
-#endif
-    q.v[0] = ntohl(q.v[0]);
-    q.v[1] = ntohl(q.v[1]);
-    q.v[2] = ntohl(q.v[2]);
-    q.v[3] = ntohl(q.v[3]);
-
-#ifdef DEBUG
-    uint64_t keyin = q.key;
-    char key[9];
-    char val[17];
-    memset(key, 0, 9);
-    memset(val, 0, 17);
-    strncpy(key, (char *)&keyin, 8);
-    strncpy(val, (char *)&q.v, 16);
-    log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.op
-             << " - key: " << keyin << '/' << key << ", val: " << val << '\n';
-#endif
+  std::vector<cache_h> ps(keys.size());
+  for (auto i = 0 ; i < keys.size(); ++i) {
+    createGetRequest(ps[i], keys[i]);
   }
+
+  std::vector<uint64_t> times(keys.size());
+
+
+  auto tStart = std::chrono::high_resolution_clock::now();
+
+  for (auto m = 0; m < opt.Multiplier; ++m) {
+    // Create the packets
+    for (auto i = 0; i < keys.size(); ++i) {
+      auto &k = keys[i];
+      sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+                          sizeof(server));
+    }
+    for (auto i = 0; i < keys.size(); ++i) {
+      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    }
+  }
+
   auto tEnd = std::chrono::high_resolution_clock::now();
 
+
+
+//   auto tStart = std::chrono::high_resolution_clock::now();
+//   for (auto &k : keys) {
+//     createGetRequest(p, k);
+
+//     auto tStart = std::chrono::high_resolution_clock::now();
+
+//     int sent = sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+//                       sizeof(server));
+// #ifdef DEBUG
+//     log(tid) << "query key: " << k << '\n';
+// #endif
+//     int recvd =
+//         recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+// #ifdef DEBUG
+//     log(tid) << "received: " << recvd << "bytes\n";
+// #endif
+//     q.v[0] = ntohl(q.v[0]);
+//     q.v[1] = ntohl(q.v[1]);
+//     q.v[2] = ntohl(q.v[2]);
+//     q.v[3] = ntohl(q.v[3]);
+
+// #ifdef DEBUG
+//     uint64_t keyin = q.key;
+//     char key[9];
+//     char val[17];
+//     memset(key, 0, 9);
+//     memset(val, 0, 17);
+//     strncpy(key, (char *)&keyin, 8);
+//     strncpy(val, (char *)&q.v, 16);
+//     log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.op
+//              << " - key: " << keyin << '/' << key << ", val: " << val << '\n';
+// #endif
+//   }
+//   auto tEnd = std::chrono::high_resolution_clock::now();
+
   stats.duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart)
+      std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
           .count();
-  stats.queries = keys.size();
+  stats.queries = keys.size() * opt.Multiplier;
 
 }
 
@@ -276,8 +312,8 @@ int main(int argc, char **argv) {
     }
 
     std::vector<std::thread> threads;
-    std::vector<statistics> stats;
-    stats.resize(opt.Threads);
+    std::vector<statistics> results(opt.Threads);
+
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
     for (auto tid = 0; tid < opt.Threads; ++tid) {
@@ -285,7 +321,7 @@ int main(int argc, char **argv) {
       auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
 
       threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                           threadKeys[tid], std::ref(stats.at(tid)), sigstart);
+                           threadKeys[tid], std::ref(results.at(tid)), sigstart);
     }
 
     std::cout << "info: starting " << opt.Threads << " client threads\n";
@@ -296,16 +332,19 @@ int main(int argc, char **argv) {
 
     uint64_t totalQueries = 0;
     double totalThroughput = 0;
+    double meanLatency = 0;
 
-    for (auto i = 0; i < stats.size(); ++i) {
-      double latency = (stats.at(i).duration / 1000.0);
-      double throughput = stats.at(i).queries / ((double) latency);
+    for (auto i = 0; i < results.size(); ++i) {
+      double latency = (results.at(i).duration / 1000000.0);
+      double throughput = results.at(i).queries / ((double) latency);
       // std::cout << "stats." << i << ": " << stats.at(i).queries << " queries - " << stats.at(i).duration << " seconds --> " << throughput << "/second\n";
       // std::cout << "Statistics for thread '" << i << "'\n";
       // stats.at(i).print(std::cout) << '\n';
       totalThroughput += throughput;
+      meanLatency += latency;
     }
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "Total throughput: " << totalThroughput << " queries per second\n";
+    std::cout << "    Mean latency: " << (meanLatency / results.size()) << " queries per second\n";
   }
 }
