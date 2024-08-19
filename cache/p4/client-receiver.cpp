@@ -81,6 +81,27 @@ std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
   return o;
 }
 
+ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
+  size_t total_bytes_received = 0;
+  char* buf_ptr = static_cast<char*>(buffer);
+
+  while (total_bytes_received < length) {
+      ssize_t bytes_received = recvfrom(socket, buf_ptr + total_bytes_received, length - total_bytes_received, 0, nullptr, nullptr);
+      if (bytes_received < 0) {
+          // An error occurred
+          perror("recvfrom");
+          return -1;
+      } else if (bytes_received == 0) {
+          // No data received
+          return total_bytes_received;
+      }
+
+      total_bytes_received += bytes_received;
+  }
+
+  return total_bytes_received;
+}
+
 void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
               uint32_t keys, statistics &stats,
               std::shared_future<void> sigstart) {
@@ -122,14 +143,19 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   sockaddr_in incaddrr;
   socklen_t inclen = sizeof(sockaddr_in);
-  cache_h q;
+  cache_h *q = (cache_h *) std::malloc((opt.Multiplier * keys - 1) * sizeof(cache_h));
 
   // First packet indicates we not start receiving, start counting time
-  recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
+  // recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
+  // auto tStart = std::chrono::high_resolution_clock::now();
+  // for (auto i = 1; i < opt.Multiplier * keys; ++i) {
+  //   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  // }
+  // auto tEnd = std::chrono::high_resolution_clock::now();
+
+  recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
-  for (auto i = 1; i < opt.Multiplier * keys; ++i) {
-    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-  }
+  recv_all_udp(soc, q, (opt.Multiplier * keys - 1) * sizeof(cache_h));
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
