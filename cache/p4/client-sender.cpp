@@ -123,18 +123,16 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   // Create the packets
   std::vector<cache_h> ps(keys.size());
-  for (auto i = 0; i < keys.size(); ++i) {
+  for (auto i = 0; i < keys.size(); ++i)
     createGetRequest(ps[i], keys[i]);
-  }
-
-  std::vector<uint64_t> times(keys.size());
 
   // Send the packets
   for (auto m = 0; m < opt.Multiplier; ++m) {
     for (auto i = 0; i < keys.size(); ++i) {
       auto &k = keys[i];
-      sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+      int sent =  sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
              sizeof(server));
+      std::cout << "sent " << sent << "bytes\n";
     }
   }
 }
@@ -180,7 +178,6 @@ int main(int argc, char **argv) {
   }
 
   std::vector<std::thread> threads;
-
   std::promise<void> start;
   std::shared_future<void> sigstart = start.get_future().share();
   for (auto tid = 0; tid < opt.Threads; ++tid) {
@@ -197,5 +194,5 @@ int main(int argc, char **argv) {
 
   std::cout << "info: finished sending "
             << (opt.Multiplier * opt.Threads * threadKeys[0].size())
-            << " requests!";
+            << " requests!\n";
 }
