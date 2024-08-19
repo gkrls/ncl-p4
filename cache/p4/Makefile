@@ -63,7 +63,7 @@ client-debug: client.cpp client_utils.h
 	g++ client.cpp -g -o client -lpthread
 
 server: server.cpp server_utils.h
-	g++ server.cpp -O3 -DDEBUG -std=c++17 -o server -lpthread
+	g++ server.cpp -O3 -DNDEBUG -std=c++17 -o server -lpthread
 
 server-debug: server.cpp server_utils.h
 	g++ -g -DDEBUG server.cpp -o server -pthread
