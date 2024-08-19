@@ -344,6 +344,6 @@ int main(int argc, char **argv) {
     }
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "Total throughput: " << totalThroughput << " queries/second\n";
-    std::cout << "    Mean latency: " << (meanLatency / results.size()) << " us\n";
+    std::cout << "    Mean latency: " << (meanLatency / results.size() / threadKeys[0].size()) << " us\n";
   }
 }
