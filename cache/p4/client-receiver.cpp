@@ -82,7 +82,7 @@ std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
 }
 
 ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
-  std::cout << "recv_all_udp\n";
+  std::cout << "recv_all_udp: " << length << '\n';;
   size_t total_bytes_received = 0;
   char* buf_ptr = static_cast<char*>(buffer);
 
