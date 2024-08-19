@@ -117,6 +117,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h q;
 
   // First packet indicates we not start receiving, start counting time
+  std::cout << "receiving...\n";
   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
   std::cout << "got first\n";
