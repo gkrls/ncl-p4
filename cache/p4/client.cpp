@@ -172,6 +172,7 @@ void interactive_client(uint32_t tid, std::string serverAddr,
 void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
             std::vector<uint64_t> const &keys, statistics &stats,
             std::shared_future<void> sigstart) {
+  log(tid) << "with server " << serverAddr << "-" << serverPort << '\n';
   sigstart.wait();
 
   auto tStart1 = std::chrono::high_resolution_clock::now();
@@ -205,6 +206,7 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h p;
   cache_h q;
 
+  // Create the packets
   std::vector<cache_h> ps(keys.size());
   for (auto i = 0; i < keys.size(); ++i) {
     createGetRequest(ps[i], keys[i]);
@@ -212,7 +214,7 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   std::vector<uint64_t> times(keys.size());
 
-  // Create the packets
+  // Send the packets
   for (auto m = 0; m < opt.Multiplier; ++m) {
     for (auto i = 0; i < keys.size(); ++i) {
       auto &k = keys[i];
@@ -352,8 +354,8 @@ int main(int argc, char **argv) {
       totalThroughput1 += results.at(i).queries /
                           ((double)(results.at(i).duration2 / 1000000.0));
       // totalQueries += results.at(i).queries;
-      meanLatency1 += results.at(i).duration1 / ((double) results.at(i).queries);
-      meanLatency2 += results.at(i).duration2 / ((double) results.at(i).queries);
+      meanLatency1 += results.at(i).duration1 / ((double)results.at(i).queries);
+      meanLatency2 += results.at(i).duration2 / ((double)results.at(i).queries);
     }
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "Total throughput1: " << totalThroughput1
