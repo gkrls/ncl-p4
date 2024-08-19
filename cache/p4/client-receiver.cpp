@@ -158,7 +158,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   int recvd = recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
-  recv_all_udp(soc, q, (opt.Multiplier * keys) * sizeof(cache_h) - recvd);
+  recv_all_udp(soc, q, (opt.Multiplier * keys) * CACHE_HEADER_SIZE - recvd);
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
