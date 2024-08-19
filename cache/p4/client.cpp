@@ -140,8 +140,8 @@ void interactive_client(uint32_t tid, std::string serverAddr,
     // sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
     // recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
 
-    auto tStart = std::chrono::high_resolution_clock::now();
     sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
+    auto tStart = std::chrono::high_resolution_clock::now();
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     auto tEnd = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
