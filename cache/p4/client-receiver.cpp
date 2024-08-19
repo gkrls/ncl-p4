@@ -106,57 +106,55 @@ ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
 }
 
 ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, int batch_size) {
-    size_t total_bytes_received = 0;
+    ssize_t total_bytes_received = 0;
     struct mmsghdr* msgs = new mmsghdr[batch_size];
     struct iovec* iovecs = new iovec[batch_size];
-    char** buffers = new char*[batch_size];
-
-    // Initialize the mmsghdr and iovec structures
-    for (int i = 0; i < batch_size; ++i) {
-        buffers[i] = static_cast<char*>(buffer) + total_bytes_received;
-        iovecs[i].iov_base = buffers[i];
-        iovecs[i].iov_len = std::min(length - total_bytes_received, length / batch_size);
-
-        msgs[i].msg_hdr.msg_iov = &iovecs[i];
-        msgs[i].msg_hdr.msg_iovlen = 1;
-        msgs[i].msg_hdr.msg_name = nullptr;
-        msgs[i].msg_hdr.msg_namelen = 0;
-        msgs[i].msg_hdr.msg_control = nullptr;
-        msgs[i].msg_hdr.msg_controllen = 0;
-        msgs[i].msg_hdr.msg_flags = 0;
-    }
 
     while (total_bytes_received < length) {
+        // Calculate how much more data we need to receive
+        size_t bytes_left = length - total_bytes_received;
+
+        // Prepare the mmsghdr and iovec structures for this batch
+        for (int i = 0; i < batch_size; ++i) {
+            iovecs[i].iov_base = static_cast<char*>(buffer) + total_bytes_received;
+            iovecs[i].iov_len = std::min(bytes_left, static_cast<size_t>(4096)); // assuming max UDP packet size of 4096 bytes
+
+            msgs[i].msg_hdr.msg_iov = &iovecs[i];
+            msgs[i].msg_hdr.msg_iovlen = 1;
+            msgs[i].msg_hdr.msg_name = nullptr;
+            msgs[i].msg_hdr.msg_namelen = 0;
+            msgs[i].msg_hdr.msg_control = nullptr;
+            msgs[i].msg_hdr.msg_controllen = 0;
+            msgs[i].msg_hdr.msg_flags = 0;
+        }
+
+        // Receive up to batch_size messages
         int num_received = recvmmsg(socket, msgs, batch_size, 0, nullptr);
         if (num_received < 0) {
             perror("recvmmsg");
             delete[] msgs;
             delete[] iovecs;
-            delete[] buffers;
             return -1;
         }
 
+        // Accumulate the total number of bytes received
         for (int i = 0; i < num_received; ++i) {
+            if (total_bytes_received + msgs[i].msg_len > length) {
+                msgs[i].msg_len = length - total_bytes_received; // truncate to avoid overflow
+            }
             total_bytes_received += msgs[i].msg_len;
+
             if (total_bytes_received >= length) {
                 break;
             }
-        }
-
-        // Update buffer pointers and lengths for next round, if more data is needed
-        for (int i = 0; i < batch_size && total_bytes_received < length; ++i) {
-            buffers[i] = static_cast<char*>(buffer) + total_bytes_received;
-            iovecs[i].iov_base = buffers[i];
-            iovecs[i].iov_len = std::min(length - total_bytes_received, length / batch_size);
-            msgs[i].msg_len = 0;  // Reset the msg_len field for next recvmmsg call
         }
     }
 
     delete[] msgs;
     delete[] iovecs;
-    delete[] buffers;
     return total_bytes_received;
 }
+
 
 void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
               uint32_t keys, statistics &stats,
