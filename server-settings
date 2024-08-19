@@ -1,0 +1,17 @@
+sudo ethtool -K ens4f0 gro on
+sudo ethtool -K ens4f0 gso on
+sudo ethtool -K ens4f0 tso on
+sudo ethtool -K ens4f0 ufo on
+sudo ethtool -K ens4f0 rx on
+sudo ethtool -K ens4f0 tx on
+
+sudo ethtool -k ens4f0 | grep generic-receive-offload
+
+
+sudo ethtool -G ens4f0 rx 4096 tx 4096
+
+
+sudo systemctl enable irqbalance
+sudo systemctl start irqbalance
+
+g++ -x c++ -DNDEBUG -flto -std=c++17 -mavx2 -Ofast -lpthread worker2.cpp -o worker2

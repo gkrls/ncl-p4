@@ -22,8 +22,11 @@ public:
   bool Perf;
   bool Random;
   bool Pin;
+  bool Connect;
+  bool Bind;
   std::string IP;
   uint16_t Port;
+  unsigned Rx;
   unsigned Steps;
   unsigned Warmup;
   unsigned Rank;
@@ -83,6 +86,11 @@ public:
     parser.add<popl::Value<unsigned>>("", "starting-version",
                                       "override default starting version", 0,
                                       &Multiplier);
+    parser.add<popl::Switch>("", "connect", "connect the socket to the device addr/port", &Connect);
+    parser.add<popl::Switch>("", "bind", "Bind to ens4f0", &Bind);
+    parser.add<popl::Value<unsigned>>("r", "rx",
+                                      "number of packets to receive at a time",
+                                      1, &Rx);
     parser.add<popl::Value<unsigned>>("m", "multiplier",
                                       "multiply the vector size by this value",
                                       1, &Multiplier);

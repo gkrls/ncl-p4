@@ -14,6 +14,7 @@
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <net/if.h>
 #include <netinet/in.h> // For sockaddr_in
 #include <ostream>
 #include <sstream>
@@ -47,7 +48,7 @@ std::ostream &printAggPacket(agg_h &h, uint32_t *data,
   return o;
 }
 
-size_t NCL_PACKET_SIZE = sizeof(agg_h) + (32 * sizeof(uint32_t));
+// size_t NCL_PACKET_SIZE = sizeof(agg_h) + (32 * sizeof(uint32_t));
 
 inline std::ostream &worker(std::ostream &os = std::cout) {
   os << "[worker." << opt.Rank << "] ";
@@ -82,7 +83,8 @@ void PrintWorkerInfo(std::ostream &O = std::cout) {
             << ", PerThread: " << opt.PacketsPerThread
             << ", Size: " << (sizeof(agg_h) + opt.ValuesPerPacket * 4) << "B ("
             << sizeof(agg_h) << " + " << (opt.ValuesPerPacket * 4) << ")"
-            << ", Burst: " << opt.Window << '\n';
+            << ", Burst: " << opt.Window << ", rx: " << opt.Rx
+            << ", connect: " << opt.Connect << ", " << opt.Bind << '\n';
 }
 
 void PrintData(uint32_t expo, uint32_t *v, size_t size, size_t n = 8,
@@ -328,14 +330,14 @@ uint64_t AllReduce(uint32_t s, int *sockets, agg_h *windows, uint8_t *versions,
 
   // Start the threads
   // Normally we would reuse threads so lets not time thread creation
-  auto tStart = std::chrono::high_resolution_clock::now();
   start.set_value();
+  auto tStart = std::chrono::high_resolution_clock::now();
   for (auto &t : threads)
     t.join();
   auto tEnd = std::chrono::high_resolution_clock::now();
 
   // return 1024;
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tStart)
+  return std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
       .count();
 }
 
@@ -357,6 +359,17 @@ int main(int argc, char **argv) {
   std::memset(soc, 0, sizeof(int));
   std::memset(addr, 0, sizeof(sockaddr_in));
 
+  sockaddr_in device;
+  device.sin_family = AF_INET;
+  device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
+  device.sin_port = htons(opt.DevicePort);
+
+  const char *interface_name =
+      "ens4f0"; // Replace with your network interface name
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, interface_name, IFNAMSIZ - 1);
+s
   for (auto i = 0; i < opt.Threads; ++i) {
     soc[i] = socket(AF_INET, SOCK_DGRAM, 0);
     addr[i].sin_family = AF_INET;
