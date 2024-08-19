@@ -113,6 +113,7 @@ void server(uint32_t tid,
     sockaddr_in inaddr;
     socklen_t inlen = sizeof(sockaddr_in);
 
+
     cache_h p = {};
     int recvd = recvfrom(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr*) &inaddr, &inlen);
     if (recvd < 0) {
@@ -121,8 +122,10 @@ void server(uint32_t tid,
     p.key = be64toh(p.key);
 
 #ifdef DEBUG
+    char *inip = inet_ntoa(inaddr.sin_addr);
+    int inport = ntohs(inaddr.sin_port);
     log(tid) << "received op:" << (uint16_t)p.op << " key: " << p.key << " : "
-             << (char *)&p.key << '\n';
+             << (char *)&p.key << " from " << inip << "-" << inport << '\n';
 #endif
     if (auto It = kvs.find(p.key); It != kvs.end()) {
 
