@@ -83,9 +83,9 @@ std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
 void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
               uint32_t keys, statistics &stats,
               std::shared_future<void> sigstart) {
+  sigstart.wait();
   log(tid) << "receiver: " << opt.IP << " - " << opt.Port + tid << '\n';
   log(tid) << "  server: " << serverAddr << "-" << serverPort << '\n';
-  sigstart.wait();
 
   sockaddr_in server;
   server.sin_family = AF_INET;
@@ -119,8 +119,10 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   // First packet indicates we not start receiving, start counting time
   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
+  std::cout << "got first\n";
   for (auto i = 0; i < opt.Multiplier * keys - 1; ++i) {
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    std::cout << i << "\n";
   }
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
