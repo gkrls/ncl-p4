@@ -123,6 +123,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   std::cout << "got " << rcvd << "bytes\n";
   auto tStart = std::chrono::high_resolution_clock::now();
   for (auto i = 0; i < opt.Multiplier * keys - 1; ++i) {
+    inclen = 0;
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     std::cout << i << "\n";
   }
