@@ -335,16 +335,15 @@ int main(int argc, char **argv) {
     double meanLatency = 0;
 
     for (auto i = 0; i < results.size(); ++i) {
-      double latency = (results.at(i).duration / 1000000.0);
-      double throughput = results.at(i).queries / ((double) latency);
+      meanLatency += results.at(i).duration / ((float) results.size());
+      double throughput = results.at(i).queries / ((double) (results.at(i).duration / 1000000.0));
       // std::cout << "stats." << i << ": " << stats.at(i).queries << " queries - " << stats.at(i).duration << " seconds --> " << throughput << "/second\n";
       // std::cout << "Statistics for thread '" << i << "'\n";
       // stats.at(i).print(std::cout) << '\n';
       totalThroughput += throughput;
-      meanLatency += latency;
     }
     std::cout << std::fixed << std::setprecision(3);
-    std::cout << "Total throughput: " << totalThroughput << " queries per second\n";
-    std::cout << "    Mean latency: " << (meanLatency / results.size()) << " queries per second\n";
+    std::cout << "Total throughput: " << totalThroughput << " queries/second\n";
+    std::cout << "    Mean latency: " << (meanLatency / results.size()) << " us\n";
   }
 }
