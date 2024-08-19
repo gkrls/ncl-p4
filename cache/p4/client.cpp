@@ -155,7 +155,7 @@ void interactive_client(uint32_t tid, std::string serverAddr,
       q.v[3] = ntohl(q.v[3]);
       char val[17] = {0};
       strncpy(val, (char *)&q.v, 16);
-      std::cout << "  key found with value: " << val << '\n';
+      std::cout << "  key found with value: " << val << "(" << duration << "us)\n";
     }
   }
 
