@@ -103,14 +103,14 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     return;
   }
 
-  // int reuse = 1;
-  // setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-  // setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
-  // if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
-  //   log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
-  //            << '\n';
-  //   return;
-  // }
+  int reuse = 1;
+  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+  setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
+  if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
+    log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
+             << '\n';
+    return;
+  }
 
   sockaddr_in incaddrr;
   socklen_t inclen = sizeof(sockaddr_in);
