@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   loadKeys(dataTxt.c_str(), keys);
 
 
-  std::cout << keys.size() << ", multiplier: " << opt.Multiplier << '\n';
+  std::cout << "info: " << keys.size() << "keys x" << opt.Multiplier << '\n';
   std::cout << "info: starting " << opt.Threads << " receiver threads\n";
 
   std::vector<std::thread> threads;
