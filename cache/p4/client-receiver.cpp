@@ -118,9 +118,10 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   // First packet indicates we not start receiving, start counting time
   std::cout << "receiving...\n";
-  recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  int rcvd = recv(soc, &q, CACHE_HEADER_SIZE, 0);
+  // recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  std::cout << "got " << rcvd << "bytes\n";
   auto tStart = std::chrono::high_resolution_clock::now();
-  std::cout << "got first\n";
   for (auto i = 0; i < opt.Multiplier * keys - 1; ++i) {
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     std::cout << i << "\n";
@@ -172,7 +173,7 @@ int main(int argc, char **argv) {
                          std::ref(results.at(tid)), sigstart);
   }
 
-  std::cout << "info: starting " << opt.Threads << " client threads\n";
+  std::cout << "info: starting " << opt.Threads << " receiver threads\n";
   start.set_value();
   for (auto &t : threads)
     if (t.joinable())
