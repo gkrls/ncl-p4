@@ -99,46 +99,44 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) 
     num_in_cache = round(CACHE / 100 * len(lines))
 
     print(f"\nWill insert {CACHE}% of keys in data.txt ({num_in_cache} keys) in the cache!!\n")
-    if num_in_cache < 1:
-        exit
+    if num_in_cache > 0:
+        for (i, l) in enumerate(lines):
+            if i == num_in_cache:
+                break
+            kv = l.strip().split('=', 1)
+            cache_entries[kv[0]] = kv[1]
 
-    for (i, l) in enumerate(lines):
-        if i == num_in_cache:
-            break
-        kv = l.strip().split('=', 1)
-        cache_entries[kv[0]] = kv[1]
+        print("Inserting cache entries:")
+        for i, (k, v) in enumerate(cache_entries.items()):
+            k_enc = encode_str_key(k)
+            val_bytes = len(bytes(v, 'utf-8'))
+            val_words = len(bytes(v, 'utf-8')) // 4 + \
+                (1 if len(bytes(v, 'utf-8')) % 4 > 0 else 0)
+            slot = 1
+            mask = (1 << val_words) - 1
 
-print("Inserting cache entries:")
-for i, (k, v) in enumerate(cache_entries.items()):
-    k_enc = encode_str_key(k)
-    val_bytes = len(bytes(v, 'utf-8'))
-    val_words = len(bytes(v, 'utf-8')) // 4 + \
-        (1 if len(bytes(v, 'utf-8')) % 4 > 0 else 0)
-    slot = 1
-    mask = (1 << val_words) - 1
+            Cache.index.add_with_read_idx(k=k_enc, i=i)
+            Cache.mask.add_with_read_mask(k=k_enc, mask=mask)
+            Cache.Valid.add(REGISTER_INDEX=i, lo=1)
 
-    Cache.index.add_with_read_idx(k=k_enc, i=i)
-    Cache.mask.add_with_read_mask(k=k_enc, mask=mask)
-    Cache.Valid.add(REGISTER_INDEX=i, lo=1)
+            val = bytes(v, 'utf-8')
 
-    val = bytes(v, 'utf-8')
-
-    if is_bit_set(mask, 0):
-        Cache.Cache1.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[0:4], byteorder='little'))
-    if is_bit_set(mask, 1):
-        Cache.Cache2.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[4:8], byteorder='little'))
-    if is_bit_set(mask, 2):
-        Cache.Cache3.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[8:12], byteorder='little'))
-    if is_bit_set(mask, 3):
-        Cache.Cache4.add(REGISTER_INDEX=i, f1=int.from_bytes(
-            val[12:16], byteorder='little'))
+            if is_bit_set(mask, 0):
+                Cache.Cache1.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                    val[0:4], byteorder='little'))
+            if is_bit_set(mask, 1):
+                Cache.Cache2.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                    val[4:8], byteorder='little'))
+            if is_bit_set(mask, 2):
+                Cache.Cache3.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                    val[8:12], byteorder='little'))
+            if is_bit_set(mask, 3):
+                Cache.Cache4.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                    val[12:16], byteorder='little'))
 
 
-    print(
-        f"  key: 0x{k_enc:016x}/{k_enc} --> cacheline: {i} | slot: {slot}, mask: {mask:032b} / {val_bytes:2d}B,{val_words}W | raw: {k} -> {v}")
+            print(
+                f"  key: 0x{k_enc:016x}/{k_enc} --> cacheline: {i} | slot: {slot}, mask: {mask:032b} / {val_bytes:2d}B,{val_words}W | raw: {k} -> {v}")
 
 
 bfrt.complete_operations()
@@ -148,71 +146,73 @@ print("================================")
 print("CACHE INFO SANITY CHECK")
 print("================================")
 
-print("Cachelines:")
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    print(f"  0x{int(e.key[b'H.cache.k']):016x} --> cacheline: {e.data[b'i']}")
-print("Mask:")
-for e in Cache.mask.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    print(
-        f"  0x{int(e.key[b'H.cache.k']):016x} -->      mask: {e.data[b'mask']:032b}, slot: {1 if is_bit_set(e.data[b'mask'], 0) else 2}")
-print("Valid:")
-for i in range(len(cache_entries)):
-    e = Cache.Valid.get(REGISTER_INDEX=i, return_ents=True,
-                        print_ents=False, from_hw=True)
-    print(
-        f"  cacheline: {i} --> hi: {e.data[b'ingress.cache.Valid.hi']} lo: {e.data[b'ingress.cache.Valid.lo']}")
-print("Values:")
 
-print("       ", end='')
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    print(f"     l:{e.data[b'i']:05d}", end='')
-print()
-print("  Cache1: ", end='')
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'i']
-    print(f"  0x{Cache.Cache1.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache1.f1'][0]:08x}",end='')
-print()
-print("  Cache2: ", end='')
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'i']
-    print(f"  0x{Cache.Cache2.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache2.f1'][0]:08x}",end='')
-print()
-print("  Cache4: ", end='')
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'i']
-    print(f"  0x{Cache.Cache3.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache3.f1'][0]:08x}",end='')
-print()
-print("  Cache4: ", end='')
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'i']
-    print(f"  0x{Cache.Cache4.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache4.f1'][0]:08x}",end='')
-print()
+if num_in_cache > 0:
+    print("Cachelines:")
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        print(f"  0x{int(e.key[b'H.cache.k']):016x} --> cacheline: {e.data[b'i']}")
+    print("Mask:")
+    for e in Cache.mask.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        print(
+            f"  0x{int(e.key[b'H.cache.k']):016x} -->      mask: {e.data[b'mask']:032b}, slot: {1 if is_bit_set(e.data[b'mask'], 0) else 2}")
+    print("Valid:")
+    for i in range(len(cache_entries)):
+        e = Cache.Valid.get(REGISTER_INDEX=i, return_ents=True,
+                            print_ents=False, from_hw=True)
+        print(
+            f"  cacheline: {i} --> hi: {e.data[b'ingress.cache.Valid.hi']} lo: {e.data[b'ingress.cache.Valid.lo']}")
+    print("Values:")
 
-print("Values reconstruct:")
+    print("       ", end='')
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        print(f"     l:{e.data[b'i']:05d}", end='')
+    print()
+    print("  Cache1: ", end='')
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        idx = e.data[b'i']
+        print(f"  0x{Cache.Cache1.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache1.f1'][0]:08x}",end='')
+    print()
+    print("  Cache2: ", end='')
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        idx = e.data[b'i']
+        print(f"  0x{Cache.Cache2.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache2.f1'][0]:08x}",end='')
+    print()
+    print("  Cache4: ", end='')
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        idx = e.data[b'i']
+        print(f"  0x{Cache.Cache3.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache3.f1'][0]:08x}",end='')
+    print()
+    print("  Cache4: ", end='')
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        idx = e.data[b'i']
+        print(f"  0x{Cache.Cache4.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache4.f1'][0]:08x}",end='')
+    print()
 
-def combine_32bit_to_string(*integers):
-    # Convert each 32-bit integer to 4 bytes and concatenate them
-    combined_bytes = b''.join(i.to_bytes(4, byteorder='little') for i in integers)
-    # Convert the combined byte sequence to a string
-    return combined_bytes.decode('utf-8', errors='ignore')
+    print("Values reconstruct:")
 
-for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'i']
-    # print()
-    key=e.key[b'H.cache.k']
-    # Cache.mask.dump()
-    mask = Cache.mask.get(key, return_ents=True, print_ents=False, from_hw=True).data[b'mask']
-    # mask.dump()
-    # print("mask: ", mask[''])
-    value_bytes = []
-    if is_bit_set(mask, 0):
-        value_bytes.append(Cache.Cache1.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache1.f1'][0])
-    if is_bit_set(mask, 1):
-        value_bytes.append(Cache.Cache2.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache2.f1'][0])
-    if is_bit_set(mask, 2):
-        value_bytes.append(Cache.Cache3.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache3.f1'][0])
-    if is_bit_set(mask, 3):
-        value_bytes.append(Cache.Cache4.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache4.f1'][0])
-    print(f"  cacheline: {idx:05d}, mask: {mask:032b} --> {value_bytes} --> {combine_32bit_to_string(*value_bytes)}")
+    def combine_32bit_to_string(*integers):
+        # Convert each 32-bit integer to 4 bytes and concatenate them
+        combined_bytes = b''.join(i.to_bytes(4, byteorder='little') for i in integers)
+        # Convert the combined byte sequence to a string
+        return combined_bytes.decode('utf-8', errors='ignore')
+
+    for e in Cache.index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+        idx = e.data[b'i']
+        # print()
+        key=e.key[b'H.cache.k']
+        # Cache.mask.dump()
+        mask = Cache.mask.get(key, return_ents=True, print_ents=False, from_hw=True).data[b'mask']
+        # mask.dump()
+        # print("mask: ", mask[''])
+        value_bytes = []
+        if is_bit_set(mask, 0):
+            value_bytes.append(Cache.Cache1.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache1.f1'][0])
+        if is_bit_set(mask, 1):
+            value_bytes.append(Cache.Cache2.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache2.f1'][0])
+        if is_bit_set(mask, 2):
+            value_bytes.append(Cache.Cache3.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache3.f1'][0])
+        if is_bit_set(mask, 3):
+            value_bytes.append(Cache.Cache4.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ingress.cache.Cache4.f1'][0])
+        print(f"  cacheline: {idx:05d}, mask: {mask:032b} --> {value_bytes} --> {combine_32bit_to_string(*value_bytes)}")
 
 print("================================")
