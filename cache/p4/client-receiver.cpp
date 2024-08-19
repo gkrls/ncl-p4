@@ -114,11 +114,11 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       std::cerr << "Binding to interface failed: " << strerror(errno) << std::endl;
       return;
   }
-  // if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
-  //   log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
-  //            << '\n';
-  //   return;
-  // }
+  if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
+    log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
+             << '\n';
+    return;
+  }
 
   sockaddr_in incaddrr;
   socklen_t inclen = sizeof(sockaddr_in);
