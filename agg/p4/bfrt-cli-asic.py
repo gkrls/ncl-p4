@@ -74,24 +74,26 @@ bfrt.pre.mgid.add(MGID=1, MULTICAST_NODE_ID=[1],
 IN.net.arp_table.add_with_arp_resolve(
     dst_proto_addr=IPAddress(C['device']['ip']), mac=EUI(C['device']['mac']))
 
-for w in C['workers']:
-    dport = get_dport_from_fport(C['workers'][w]['port'])
-    bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
-                        PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
-    print(f'  enabled port {dport}')
+for i, w in enumerate(C['workers']):
+    if i < C['active-workers']:
+        dport = get_dport_from_fport(C['workers'][w]['port'])
+        bfrt.port.port.add( DEV_PORT=dport, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_NONE",
+                            PORT_ENABLE=True, AUTO_NEGOTIATION="PM_AN_FORCE_DISABLE")
+        print(f'  enabled port {dport}')
 
 for w in C['workers']:
-    dport = get_dport_from_fport(C['workers'][w]['port'])
-    mask = 1 << (C['workers'][w]['rank'] - 1)
-    mac, ip = EUI(C['workers'][w]['mac']), IPAddress(C['workers'][w]['ip'])
-    IN.net.forwarding_table.add_with_send_to_port(dst_addr=mac, port=dport)
-    EG.allreduce_sender.add_with_send_to_worker(
-        egress_port=dport, mac=mac, ip=ip, mask=mask)
-    print('  %s/%s -> %d (%s)' % (mac, ip, dport, w))
+    if i < C['active-workers']:
+        dport = get_dport_from_fport(C['workers'][w]['port'])
+        mask = 1 << (C['workers'][w]['rank'] - 1)
+        mac, ip = EUI(C['workers'][w]['mac']), IPAddress(C['workers'][w]['ip'])
+        IN.net.forwarding_table.add_with_send_to_port(dst_addr=mac, port=dport)
+        EG.allreduce_sender.add_with_send_to_worker(
+            egress_port=dport, mac=mac, ip=ip, mask=mask)
+        print('  %s/%s -> %d (%s)' % (mac, ip, dport, w))
 
 # Multicast group for allreduce
-worker_ports = [get_dport_from_fport(
-    C['workers'][w]['port']) for w in C['workers']]
+worker_ports = [get_dport_from_fport(C['workers'][w]['port'])
+             for (i,w) in enumerate(C['workers']) if i < C['active-workers']]
 bfrt.pre.node.entry(MULTICAST_NODE_ID=C['mgid'], MULTICAST_RID=C['mgid'],
                     MULTICAST_LAG_ID=[], DEV_PORT=worker_ports).push()
 bfrt.pre.mgid.add(MGID=C['mgid'], MULTICAST_NODE_ID=[C['mgid']],

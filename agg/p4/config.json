@@ -51,14 +51,28 @@
                 "rank": 4,
                 "mac": "94:6d:ae:8c:e4:7c",
                 "ip": "42.0.0.4"
+            },
+            "hpdc-gnode5": {
+                "port": 5,
+                "rank": 5,
+                "mac": "94:6d:ae:8c:e4:8c",
+                "ip": "42.0.0.5"
+            },
+            "hpdc-gnode6": {
+                "port": 6,
+                "rank": 6,
+                "mac": "94:6d:ae:8c:e7:4c",
+                "ip": "42.0.0.6"
             }
         },
+        "active-workers": 4,
         "mgid": 2,
         "udp-port-base": 4242,
         "timeout": 2,
         "threads": 8,
         "burst": 1,
         "device": {
+            "id": 1,
             "name": "s1",
             "mac": "42:00:00:00:00:00",
             "ip": "42.0.0.0",
