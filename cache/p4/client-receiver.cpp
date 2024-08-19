@@ -155,17 +155,6 @@ int main(int argc, char **argv) {
   std::string dataTxt = GetExecutableDir().append("/data.txt");
   loadKeys(dataTxt.c_str(), keys);
 
-  std::vector<std::vector<uint64_t>> threadKeys(opt.Threads);
-
-  for (size_t i = 0; i < opt.Threads; ++i) {
-    threadKeys[i].reserve(keys.size() * opt.Multiplier);
-    std::default_random_engine rng(opt.Seed + i);
-    for (auto j = 0; j < opt.Multiplier; ++j) {
-      std::shuffle(keys.begin(), keys.end(), rng);
-      threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
-    }
-  }
-
   std::vector<std::thread> threads;
   std::vector<statistics> results(opt.Threads);
 
