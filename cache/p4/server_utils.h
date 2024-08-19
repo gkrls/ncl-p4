@@ -82,7 +82,7 @@ public:
                                          "42.0.0.0", &DeviceIp);
     parser.add<popl::Value<uint16_t>>("", "device-port", "device UDP port",
                                       4242, &DevicePort);
-    parser.add<popl::Value<uint32_t>>("-m", "multiplier", "how many times to run the client thread loop",
+    parser.add<popl::Value<uint32_t>>("m", "multiplier", "how many times to run the client thread loop",
                                       1, &Multiplier);
   }
 
