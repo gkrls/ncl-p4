@@ -125,19 +125,22 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h q;
 
   // First packet indicates we not start receiving, start counting time
-  recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  int recvd = recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  std::cout << recvd << " bytes\n";
   auto tStart = std::chrono::high_resolution_clock::now();
   for (auto i = 1; i < opt.Multiplier * keys; ++i) {
     // sockaddr_in incaddrr;
     // socklen_t inclen = sizeof(sockaddr_in);
-    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    std::cout << i << "\n";
+    recvd = recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    std::cout << recvd << " bytes\n";
+    // std::cout << i << "\n";
   }
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
           .count();
   stats.queries = opt.Multiplier * keys;
+  close(soc);
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
