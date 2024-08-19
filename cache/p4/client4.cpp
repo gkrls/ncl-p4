@@ -217,6 +217,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
           .count();
   stats.queries = opt.Multiplier * keys;
+  close(soc);
 }
 
 

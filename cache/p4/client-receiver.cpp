@@ -10,6 +10,7 @@
 #include <iostream>
 #include <istream>
 #include <netinet/in.h>
+#include <net/if.h>
 #include <ostream>
 #include <random>
 #include <sys/socket.h>
@@ -104,8 +105,15 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   }
 
   int reuse = 1;
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "ens4f0");
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
+  if (setsockopt(soc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
+      std::cerr << "Binding to interface failed: " << strerror(errno) << std::endl;
+      return;
+  }
   if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
     log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
              << '\n';
