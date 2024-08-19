@@ -125,6 +125,7 @@ void server(uint32_t tid,
     int recvd = recvfrom(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr*) &inaddr, &inlen);
     if (recvd < 0) {
       log(tid) << "recv error\n";
+      continue;
     }
     p.cache.key = be64toh(p.cache.key);
 
