@@ -105,19 +105,22 @@ ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
   return total_bytes_received;
 }
 
-ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, int batch_size) {
+ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, size_t packet_size, int batch_size) {
     ssize_t total_bytes_received = 0;
+    size_t total_packets = length / packet_size;
+    size_t batches = (total_packets + batch_size - 1) / batch_size; // Total number of batches needed
+
     struct mmsghdr* msgs = new mmsghdr[batch_size];
     struct iovec* iovecs = new iovec[batch_size];
 
-    while (total_bytes_received < length) {
-        // Calculate how much more data we need to receive
-        size_t bytes_left = length - total_bytes_received;
+    for (size_t batch = 0; batch < batches; ++batch) {
+        // Number of packets to receive in this batch
+        int packets_in_this_batch = std::min((unsigned long) batch_size, total_packets - batch * batch_size);
 
-        // Prepare the mmsghdr and iovec structures for this batch
-        for (int i = 0; i < batch_size; ++i) {
+        // Prepare mmsghdr and iovec structures for this batch
+        for (int i = 0; i < packets_in_this_batch; ++i) {
             iovecs[i].iov_base = static_cast<char*>(buffer) + total_bytes_received;
-            iovecs[i].iov_len = std::min(bytes_left, static_cast<size_t>(4096)); // assuming max UDP packet size of 4096 bytes
+            iovecs[i].iov_len = packet_size;
 
             msgs[i].msg_hdr.msg_iov = &iovecs[i];
             msgs[i].msg_hdr.msg_iovlen = 1;
@@ -129,7 +132,7 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, int batch_si
         }
 
         // Receive up to batch_size messages
-        int num_received = recvmmsg(socket, msgs, batch_size, 0, nullptr);
+        int num_received = recvmmsg(socket, msgs, packets_in_this_batch, 0, nullptr);
         if (num_received < 0) {
             perror("recvmmsg");
             delete[] msgs;
@@ -139,14 +142,7 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, int batch_si
 
         // Accumulate the total number of bytes received
         for (int i = 0; i < num_received; ++i) {
-            if (total_bytes_received + msgs[i].msg_len > length) {
-                msgs[i].msg_len = length - total_bytes_received; // truncate to avoid overflow
-            }
             total_bytes_received += msgs[i].msg_len;
-
-            if (total_bytes_received >= length) {
-                break;
-            }
         }
     }
 
@@ -209,7 +205,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   int recvd = recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
-  recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, 16);
+  recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, CACHE_HEADER_SIZE, 16);
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
