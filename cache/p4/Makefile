@@ -59,7 +59,7 @@ client: client.cpp client_utils.h
 client2: client2.cpp client_utils.h
 	g++ client2.cpp -O3 -DNDEBUG -std=c++17 -o client2 -lpthread
 
-client3: client-sender.cpp client-server.cpp client_utils.h
+client3: client-sender.cpp client-receiver.cpp client_utils.h
 	g++ client-sender.cpp -O3 -DNDEBUG -std=c++17 -o client-sender -lpthread
 	g++ client-receiver.cpp -O3 -DNDEBUG -std=c++17 -o client-receiver -lpthread
 
