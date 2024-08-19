@@ -192,8 +192,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   sockaddr_in server;
   server.sin_family = AF_INET;
-  server.sin_addr.s_addr = inet_addr(opt.ServerIp.c_str());
-  server.sin_port = htons(opt.ServerPort);
+  server.sin_addr.s_addr = inet_addr(serverAddr.c_str());
+  server.sin_port = htons(serverPort);
 
   sockaddr_in addr;
   addr.sin_family = AF_INET;

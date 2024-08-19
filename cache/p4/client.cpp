@@ -38,10 +38,12 @@ struct __attribute__((packed)) cache_h {
 
 struct statistics {
   uint32_t queries;
-  uint64_t duration;
+  uint64_t duration1;
+  uint64_t duration2;
   std::ostream &print(std::ostream &o = std::cout) {
     o << "numqueries: " << queries << '\n';
-    o << "  duration: " << duration << '\n';
+    o << " duration1: " << duration1 << '\n';
+    o << " duration2: " << duration2 << '\n';
     return o;
   }
 };
@@ -172,10 +174,12 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
             std::shared_future<void> sigstart) {
   sigstart.wait();
 
+  auto tStart1 = std::chrono::high_resolution_clock::now();
+
   sockaddr_in server;
   server.sin_family = AF_INET;
-  server.sin_addr.s_addr = inet_addr(opt.ServerIp.c_str());
-  server.sin_port = htons(opt.ServerPort);
+  server.sin_addr.s_addr = inet_addr(serverAddr.c_str());
+  server.sin_port = htons(serverPort);
 
   sockaddr_in addr;
   addr.sin_family = AF_INET;
@@ -216,7 +220,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
              sizeof(server));
     }
   }
-  auto tStart = std::chrono::high_resolution_clock::now();
+
+  auto tStart2 = std::chrono::high_resolution_clock::now();
 
   for (auto m = 0; m < opt.Multiplier; ++m) {
     for (auto i = 0; i < keys.size(); ++i) {
@@ -263,8 +268,11 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   //   }
   //   auto tEnd = std::chrono::high_resolution_clock::now();
 
-  stats.duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
+  stats.duration1 =
+      std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart1)
+          .count();
+  stats.duration2 =
+      std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart2)
           .count();
   stats.queries = keys.size() * opt.Multiplier;
 }
@@ -305,11 +313,8 @@ int main(int argc, char **argv) {
     std::vector<std::vector<uint64_t>> threadKeys(opt.Threads);
 
     for (size_t i = 0; i < opt.Threads; ++i) {
-
       threadKeys[i].reserve(keys.size() * opt.Multiplier);
-
       std::default_random_engine rng(opt.Seed + i);
-
       for (auto j = 0; j < opt.Multiplier; ++j) {
         std::shuffle(keys.begin(), keys.end(), rng);
         threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
@@ -322,9 +327,7 @@ int main(int argc, char **argv) {
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
     for (auto tid = 0; tid < opt.Threads; ++tid) {
-
       auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
-
       threads.emplace_back(client, tid, opt.ServerIp, serverPort,
                            threadKeys[tid], std::ref(results.at(tid)),
                            sigstart);
@@ -337,25 +340,29 @@ int main(int argc, char **argv) {
         t.join();
 
     uint64_t totalQueries = 0;
-    double totalThroughput = 0;
+    double totalThroughput1 = 0;
+    double totalThroughput2 = 0;
 
-    double meanLatency = 0;
+    double meanLatency1 = 0;
+    double meanLatency2 = 0;
 
     for (auto i = 0; i < results.size(); ++i) {
-      double throughput = results.at(i).queries /
-                          ((double)(results.at(i).duration / 1000000.0));
-      // std::cout << "stats." << i << ": " << stats.at(i).queries << " queries
-      // - " << stats.at(i).duration << " seconds --> " << throughput <<
-      // "/second\n"; std::cout << "Statistics for thread '" << i << "'\n";
-      // stats.at(i).print(std::cout) << '\n';
-      totalThroughput += throughput;
-      totalQueries += results.at(i).queries;
-      meanLatency += results.at(i).duration / ((double) totalQueries);
+      totalThroughput1 += results.at(i).queries /
+                          ((double)(results.at(i).duration1 / 1000000.0));
+      totalThroughput1 += results.at(i).queries /
+                          ((double)(results.at(i).duration2 / 1000000.0));
+      // totalQueries += results.at(i).queries;
+      meanLatency1 += results.at(i).duration1 / ((double) results.at(i).queries);
+      meanLatency2 += results.at(i).duration2 / ((double) results.at(i).queries);
     }
     std::cout << std::fixed << std::setprecision(3);
-    std::cout << "Total throughput: " << totalThroughput << " queries/second\n";
-    std::cout << "    Mean latency: "
-              << (meanLatency / results.size())
+    std::cout << "Total throughput1: " << totalThroughput1
+              << " queries/second\n";
+    std::cout << "Total throughput2: " << totalThroughput2
+              << " queries/second\n";
+    std::cout << "    Mean latency1: " << (meanLatency1 / results.size())
+              << " us\n";
+    std::cout << "    Mean latency2: " << (meanLatency2 / results.size())
               << " us\n";
   }
 }
