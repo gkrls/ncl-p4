@@ -105,6 +105,40 @@ ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
   return total_bytes_received;
 }
 
+ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length) {
+    const int BATCH_SIZE = 5; // Number of packets to receive at once
+    struct mmsghdr msgs[BATCH_SIZE];
+    struct iovec iovecs[BATCH_SIZE];
+    char* buffers[BATCH_SIZE];
+    ssize_t total_bytes_received = 0;
+
+    memset(msgs, 0, sizeof(msgs));
+
+    // Split the provided buffer into smaller chunks for each packet
+    size_t chunk_size = length / BATCH_SIZE;
+    for (int i = 0; i < BATCH_SIZE; ++i) {
+        buffers[i] = static_cast<char*>(buffer) + (i * chunk_size);
+        iovecs[i].iov_base = buffers[i];
+        iovecs[i].iov_len = chunk_size;
+        msgs[i].msg_hdr.msg_iov = &iovecs[i];
+        msgs[i].msg_hdr.msg_iovlen = 1;
+    }
+
+    // Receive up to BATCH_SIZE messages
+    int num_received = recvmmsg(socket, msgs, BATCH_SIZE, 0, nullptr);
+    if (num_received < 0) {
+        perror("recvmmsg");
+        return -1;
+    }
+
+    // Accumulate the total number of bytes received
+    for (int i = 0; i < num_received; ++i) {
+      total_bytes_received += msgs[i].msg_len;
+    }
+
+    return total_bytes_received;
+}
+
 void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
               uint32_t keys, statistics &stats,
               std::shared_future<void> sigstart) {
@@ -158,7 +192,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   int recvd = recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
-  recv_all_udp(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd);
+  recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd);
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
