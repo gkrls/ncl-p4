@@ -120,7 +120,8 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
   for (auto i = 1; i < opt.Multiplier * keys; ++i) {
-    inclen = 0;
+    sockaddr_in incaddrr;
+    socklen_t inclen = sizeof(sockaddr_in);
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     std::cout << i << "\n";
   }
