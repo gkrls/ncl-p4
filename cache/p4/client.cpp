@@ -137,17 +137,21 @@ void interactive_client(uint32_t tid, std::string serverAddr,
     strncpy((char *)&k, line.data(), line.size());
 
     createGetRequest(p, k);
-    // sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
-    // recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    // sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+    // sizeof(server)); recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr
+    // *)&incaddrr, &inclen);
 
     sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server, sizeof(server));
     auto tStart = std::chrono::high_resolution_clock::now();
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     auto tEnd = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count();
+    auto duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
+            .count();
 
     if (q.op == cache_op::GET_RQ)
-      std::cout << "  key not found " << "(" << duration << "us)\n";
+      std::cout << "  key not found "
+                << "(" << duration << "us)\n";
     else {
       q.v[0] = ntohl(q.v[0]);
       q.v[1] = ntohl(q.v[1]);
@@ -155,7 +159,8 @@ void interactive_client(uint32_t tid, std::string serverAddr,
       q.v[3] = ntohl(q.v[3]);
       char val[17] = {0};
       strncpy(val, (char *)&q.v, 16);
-      std::cout << "  key found with value: " << val << "(" << duration << "us)\n";
+      std::cout << "  key found with value: " << val << "(" << duration
+                << "us)\n";
     }
   }
 
@@ -197,22 +202,23 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h q;
 
   std::vector<cache_h> ps(keys.size());
-  for (auto i = 0 ; i < keys.size(); ++i) {
+  for (auto i = 0; i < keys.size(); ++i) {
     createGetRequest(ps[i], keys[i]);
   }
 
   std::vector<uint64_t> times(keys.size());
 
-
-  auto tStart = std::chrono::high_resolution_clock::now();
-
+  // Create the packets
   for (auto m = 0; m < opt.Multiplier; ++m) {
-    // Create the packets
     for (auto i = 0; i < keys.size(); ++i) {
       auto &k = keys[i];
       sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-                          sizeof(server));
+             sizeof(server));
     }
+  }
+  auto tStart = std::chrono::high_resolution_clock::now();
+
+  for (auto m = 0; m < opt.Multiplier; ++m) {
     for (auto i = 0; i < keys.size(); ++i) {
       recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     }
@@ -220,48 +226,47 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   auto tEnd = std::chrono::high_resolution_clock::now();
 
+  //   auto tStart = std::chrono::high_resolution_clock::now();
+  //   for (auto &k : keys) {
+  //     createGetRequest(p, k);
 
+  //     auto tStart = std::chrono::high_resolution_clock::now();
 
-//   auto tStart = std::chrono::high_resolution_clock::now();
-//   for (auto &k : keys) {
-//     createGetRequest(p, k);
+  //     int sent = sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+  //                       sizeof(server));
+  // #ifdef DEBUG
+  //     log(tid) << "query key: " << k << '\n';
+  // #endif
+  //     int recvd =
+  //         recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr,
+  //         &inclen);
+  // #ifdef DEBUG
+  //     log(tid) << "received: " << recvd << "bytes\n";
+  // #endif
+  //     q.v[0] = ntohl(q.v[0]);
+  //     q.v[1] = ntohl(q.v[1]);
+  //     q.v[2] = ntohl(q.v[2]);
+  //     q.v[3] = ntohl(q.v[3]);
 
-//     auto tStart = std::chrono::high_resolution_clock::now();
-
-//     int sent = sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-//                       sizeof(server));
-// #ifdef DEBUG
-//     log(tid) << "query key: " << k << '\n';
-// #endif
-//     int recvd =
-//         recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-// #ifdef DEBUG
-//     log(tid) << "received: " << recvd << "bytes\n";
-// #endif
-//     q.v[0] = ntohl(q.v[0]);
-//     q.v[1] = ntohl(q.v[1]);
-//     q.v[2] = ntohl(q.v[2]);
-//     q.v[3] = ntohl(q.v[3]);
-
-// #ifdef DEBUG
-//     uint64_t keyin = q.key;
-//     char key[9];
-//     char val[17];
-//     memset(key, 0, 9);
-//     memset(val, 0, 17);
-//     strncpy(key, (char *)&keyin, 8);
-//     strncpy(val, (char *)&q.v, 16);
-//     log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.op
-//              << " - key: " << keyin << '/' << key << ", val: " << val << '\n';
-// #endif
-//   }
-//   auto tEnd = std::chrono::high_resolution_clock::now();
+  // #ifdef DEBUG
+  //     uint64_t keyin = q.key;
+  //     char key[9];
+  //     char val[17];
+  //     memset(key, 0, 9);
+  //     memset(val, 0, 17);
+  //     strncpy(key, (char *)&keyin, 8);
+  //     strncpy(val, (char *)&q.v, 16);
+  //     log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.op
+  //              << " - key: " << keyin << '/' << key << ", val: " << val <<
+  //              '\n';
+  // #endif
+  //   }
+  //   auto tEnd = std::chrono::high_resolution_clock::now();
 
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
           .count();
   stats.queries = keys.size() * opt.Multiplier;
-
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
@@ -321,7 +326,8 @@ int main(int argc, char **argv) {
       auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
 
       threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                           threadKeys[tid], std::ref(results.at(tid)), sigstart);
+                           threadKeys[tid], std::ref(results.at(tid)),
+                           sigstart);
     }
 
     std::cout << "info: starting " << opt.Threads << " client threads\n";
@@ -332,18 +338,24 @@ int main(int argc, char **argv) {
 
     uint64_t totalQueries = 0;
     double totalThroughput = 0;
+
     double meanLatency = 0;
 
     for (auto i = 0; i < results.size(); ++i) {
-      meanLatency += results.at(i).duration / ((float) results.size());
-      double throughput = results.at(i).queries / ((double) (results.at(i).duration / 1000000.0));
-      // std::cout << "stats." << i << ": " << stats.at(i).queries << " queries - " << stats.at(i).duration << " seconds --> " << throughput << "/second\n";
-      // std::cout << "Statistics for thread '" << i << "'\n";
+      double throughput = results.at(i).queries /
+                          ((double)(results.at(i).duration / 1000000.0));
+      // std::cout << "stats." << i << ": " << stats.at(i).queries << " queries
+      // - " << stats.at(i).duration << " seconds --> " << throughput <<
+      // "/second\n"; std::cout << "Statistics for thread '" << i << "'\n";
       // stats.at(i).print(std::cout) << '\n';
       totalThroughput += throughput;
+      totalQueries += results.at(i).queries;
+      meanLatency += results.at(i).duration / ((double) totalQueries);
     }
     std::cout << std::fixed << std::setprecision(3);
     std::cout << "Total throughput: " << totalThroughput << " queries/second\n";
-    std::cout << "    Mean latency: " << (meanLatency / results.size() / threadKeys[0].size()) << " us\n";
+    std::cout << "    Mean latency: "
+              << (meanLatency / results.size())
+              << " us\n";
   }
 }
