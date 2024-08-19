@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
     threads.emplace_back(receiver, tid, opt.ServerIp, serverPort, keys.size(),
                          std::ref(results.at(tid)), sigstart);
   }
-
+  std::cout << keys.size() << ", multiplier: " << opt.Multiplier << '\n';
   std::cout << "info: starting " << opt.Threads << " receiver threads\n";
   start.set_value();
   for (auto &t : threads)
