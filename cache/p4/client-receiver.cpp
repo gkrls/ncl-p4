@@ -120,8 +120,8 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
   for (auto i = 1; i < opt.Multiplier * keys; ++i) {
-    sockaddr_in incaddrr;
-    socklen_t inclen = sizeof(sockaddr_in);
+    // sockaddr_in incaddrr;
+    // socklen_t inclen = sizeof(sockaddr_in);
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     std::cout << i << "\n";
   }
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   loadKeys(dataTxt.c_str(), keys);
 
 
-  std::cout << "info: " << keys.size() << "keys x" << opt.Multiplier << '\n';
+  std::cout << "info: " << keys.size() << " keys x" << opt.Multiplier << '\n';
   std::cout << "info: starting " << opt.Threads << " receiver threads\n";
 
   std::vector<std::thread> threads;

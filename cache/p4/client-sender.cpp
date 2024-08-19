@@ -128,7 +128,7 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   for (auto m = 0; m < opt.Multiplier; ++m) {
     for (auto i = 0; i < keys.size(); ++i) {
       auto &k = keys[i];
-      int sent =  sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+      int sent =  sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *) &server,
              sizeof(server));
       std::cout << "sent " << sent << "bytes\n";
     }
