@@ -132,6 +132,7 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *) &server, sizeof(server));
     }
   }
+  std::cout << "DONE\n";
   close(soc);
 }
 
