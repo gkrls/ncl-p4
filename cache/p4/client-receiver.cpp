@@ -181,7 +181,6 @@ void listen_to_sockets(int* sockets, size_t socket_count, size_t packet_size, si
 
     for (size_t i = 0; i < socket_count; ++i) {
         make_socket_non_blocking(sockets[i]);
-
         event.data.fd = sockets[i];
         event.events = EPOLLIN;
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockets[i], &event) == -1) {
@@ -197,11 +196,11 @@ void listen_to_sockets(int* sockets, size_t socket_count, size_t packet_size, si
         for (int i = 0; i < n; ++i) {
             if (events[i].events & EPOLLIN) {
                 ssize_t bytes_received = recv_all_udp_batch(events[i].data.fd, buffer, total_length, packet_size, batch_size);
-                if (bytes_received < 0) {
-                    std::cerr << "Error receiving data on socket " << events[i].data.fd << std::endl;
-                } else {
-                    std::cout << "Thread " << std::this_thread::get_id() << " received " << bytes_received << " bytes on socket " << events[i].data.fd << std::endl;
-                }
+                // if (bytes_received < 0) {
+                //     std::cerr << "Error receiving data on socket " << events[i].data.fd << std::endl;
+                // } else {
+                //     std::cout << "Thread " << std::this_thread::get_id() << " received " << bytes_received << " bytes on socket " << events[i].data.fd << std::endl;
+                // }
             }
         }
     }
