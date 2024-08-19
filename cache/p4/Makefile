@@ -56,6 +56,9 @@ hosts-debug: client-debug server-debug
 client: client.cpp client_utils.h
 	g++ client.cpp -O3 -DNDEBUG -std=c++17 -o client -lpthread
 
+client: client2.cpp client_utils.h
+	g++ client2.cpp -O3 -DNDEBUG -std=c++17 -o client -lpthread
+
 client-debug: client.cpp client_utils.h
 	g++ client.cpp -g -o client -lpthread
 

@@ -215,18 +215,14 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   std::vector<uint64_t> times(keys.size());
 
   // Send the packets
-  for (auto m = 0; m < opt.Multiplier; ++m) {
-    for (auto i = 0; i < keys.size(); ++i) {
-      auto &k = keys[i];
-      sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-             sizeof(server));
-    }
-  }
 
   auto tStart2 = std::chrono::high_resolution_clock::now();
 
   for (auto m = 0; m < opt.Multiplier; ++m) {
     for (auto i = 0; i < keys.size(); ++i) {
+      auto &k = keys[i];
+      sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+             sizeof(server));
       recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     }
   }
