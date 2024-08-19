@@ -105,38 +105,56 @@ ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
   return total_bytes_received;
 }
 
-ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length) {
-    const int BATCH_SIZE = 5; // Number of packets to receive at once
-    struct mmsghdr msgs[BATCH_SIZE];
-    struct iovec iovecs[BATCH_SIZE];
-    char* buffers[BATCH_SIZE];
-    ssize_t total_bytes_received = 0;
+ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, int batch_size) {
+    size_t total_bytes_received = 0;
+    struct mmsghdr* msgs = new mmsghdr[batch_size];
+    struct iovec* iovecs = new iovec[batch_size];
+    char** buffers = new char*[batch_size];
 
-    memset(msgs, 0, sizeof(msgs));
-
-    // Split the provided buffer into smaller chunks for each packet
-    size_t chunk_size = sizeof(cache_h); //length / BATCH_SIZE;
-
-    for (int i = 0; i < BATCH_SIZE; ++i) {
-        buffers[i] = static_cast<char*>(buffer) + (i * chunk_size);
+    // Initialize the mmsghdr and iovec structures
+    for (int i = 0; i < batch_size; ++i) {
+        buffers[i] = static_cast<char*>(buffer) + total_bytes_received;
         iovecs[i].iov_base = buffers[i];
-        iovecs[i].iov_len = chunk_size;
+        iovecs[i].iov_len = std::min(length - total_bytes_received, length / batch_size);
+
         msgs[i].msg_hdr.msg_iov = &iovecs[i];
         msgs[i].msg_hdr.msg_iovlen = 1;
+        msgs[i].msg_hdr.msg_name = nullptr;
+        msgs[i].msg_hdr.msg_namelen = 0;
+        msgs[i].msg_hdr.msg_control = nullptr;
+        msgs[i].msg_hdr.msg_controllen = 0;
+        msgs[i].msg_hdr.msg_flags = 0;
     }
 
-    // Receive up to BATCH_SIZE messages
-    int num_received = recvmmsg(socket, msgs, BATCH_SIZE, 0, nullptr);
-    if (num_received < 0) {
-        perror("recvmmsg");
-        return -1;
+    while (total_bytes_received < length) {
+        int num_received = recvmmsg(socket, msgs, batch_size, 0, nullptr);
+        if (num_received < 0) {
+            perror("recvmmsg");
+            delete[] msgs;
+            delete[] iovecs;
+            delete[] buffers;
+            return -1;
+        }
+
+        for (int i = 0; i < num_received; ++i) {
+            total_bytes_received += msgs[i].msg_len;
+            if (total_bytes_received >= length) {
+                break;
+            }
+        }
+
+        // Update buffer pointers and lengths for next round, if more data is needed
+        for (int i = 0; i < batch_size && total_bytes_received < length; ++i) {
+            buffers[i] = static_cast<char*>(buffer) + total_bytes_received;
+            iovecs[i].iov_base = buffers[i];
+            iovecs[i].iov_len = std::min(length - total_bytes_received, length / batch_size);
+            msgs[i].msg_len = 0;  // Reset the msg_len field for next recvmmsg call
+        }
     }
 
-    // Accumulate the total number of bytes received
-    for (int i = 0; i < num_received; ++i) {
-      total_bytes_received += msgs[i].msg_len;
-    }
-
+    delete[] msgs;
+    delete[] iovecs;
+    delete[] buffers;
     return total_bytes_received;
 }
 
@@ -193,7 +211,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   int recvd = recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
   auto tStart = std::chrono::high_resolution_clock::now();
-  recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd);
+  recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, 16);
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
