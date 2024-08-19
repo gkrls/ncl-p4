@@ -82,6 +82,7 @@ std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
 }
 
 ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
+  std::cout << "recv_all_udp\n";
   size_t total_bytes_received = 0;
   char* buf_ptr = static_cast<char*>(buffer);
 
@@ -146,7 +147,7 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h *q = (cache_h *) std::malloc((opt.Multiplier * keys - 1) * sizeof(cache_h));
 
   // First packet indicates we not start receiving, start counting time
-  recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
+  // recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
   // auto tStart = std::chrono::high_resolution_clock::now();
   // for (auto i = 1; i < opt.Multiplier * keys; ++i) {
   //   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
