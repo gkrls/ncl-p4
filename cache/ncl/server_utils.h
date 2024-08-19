@@ -71,7 +71,7 @@ public:
                                          "42.0.0.4", &IP);
     parser.add<popl::Value<uint16_t>>("P", "port", "base udp port", 4242,
                                       &Port);
-    parser.add<popl::Value<unsigned>>("j", "threads", "number of threads", 1,
+    parser.add<popl::Value<uint32_t>>("j", "threads", "number of threads", 1,
                                       &Threads);
 
     parser.add<popl::Value<uint8_t>>("", "id", "the NetCL id of this host", 4,

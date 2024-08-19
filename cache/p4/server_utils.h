@@ -71,7 +71,7 @@ public:
                                          "42.0.0.4", &IP);
     parser.add<popl::Value<uint16_t>>("P", "port", "base udp port", 4242,
                                       &Port);
-    parser.add<popl::Value<unsigned>>("j", "threads", "number of threads", 1,
+    parser.add<popl::Value<uint32_t>>("j", "threads", "number of threads", 1,
                                       &Threads);
 
     parser.add<popl::Switch>("", "perf", "run in performance mode", &Perf);
@@ -82,7 +82,7 @@ public:
                                          "42.0.0.0", &DeviceIp);
     parser.add<popl::Value<uint16_t>>("", "device-port", "device UDP port",
                                       4242, &DevicePort);
-    parser.add<popl::Value<uint16_t>>("-m", "multiplier", "how many times to run the client thread loop",
+    parser.add<popl::Value<uint32_t>>("-m", "multiplier", "how many times to run the client thread loop",
                                       1, &Multiplier);
   }
 
