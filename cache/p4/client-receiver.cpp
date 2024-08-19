@@ -88,6 +88,7 @@ ssize_t recv_all_udp(int socket, void* buffer, size_t length) {
 
   while (total_bytes_received < length) {
       ssize_t bytes_received = recvfrom(socket, buf_ptr + total_bytes_received, length - total_bytes_received, 0, nullptr, nullptr);
+      std::cout << "recvd: " << bytes_received << '\n';
       if (bytes_received < 0) {
           // An error occurred
           perror("recvfrom");
