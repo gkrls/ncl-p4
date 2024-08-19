@@ -133,6 +133,7 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       std::cout << "sent " << sent << "bytes\n";
     }
   }
+  close(soc);
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
