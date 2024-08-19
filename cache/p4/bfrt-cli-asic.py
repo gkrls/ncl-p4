@@ -99,6 +99,8 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) 
     num_in_cache = round(CACHE / 100 * len(lines))
 
     print(f"\nWill insert {CACHE}% of keys in data.txt ({num_in_cache} keys) in the cache!!\n")
+    if num_in_cache < 1:
+        exit
 
     for (i, l) in enumerate(lines):
         if i == num_in_cache:
