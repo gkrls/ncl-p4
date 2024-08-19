@@ -83,7 +83,8 @@ std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
 void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
               uint32_t keys, statistics &stats,
               std::shared_future<void> sigstart) {
-  log(tid) << "with server " << serverAddr << "-" << serverPort << '\n';
+  log(tid) << "receiver: " << opt.IP << " - " << opt.Port + tid << '\n';
+  log(tid) << "  server: " << serverAddr << "-" << serverPort << '\n';
   sigstart.wait();
 
   sockaddr_in server;
