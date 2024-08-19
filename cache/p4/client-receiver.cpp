@@ -76,7 +76,7 @@ void createGetRequest(cache_h &c, uint64_t key) {
 static options opt;
 
 std::ostream &log(uint32_t tid, std::ostream &o = std::cout) {
-  std::cout << '[' << "client." << tid << "] ";
+  std::cout << '[' << "receiver." << tid << "] ";
   return o;
 }
 
@@ -161,6 +161,10 @@ int main(int argc, char **argv) {
   std::string dataTxt = GetExecutableDir().append("/data.txt");
   loadKeys(dataTxt.c_str(), keys);
 
+
+  std::cout << keys.size() << ", multiplier: " << opt.Multiplier << '\n';
+  std::cout << "info: starting " << opt.Threads << " receiver threads\n";
+
   std::vector<std::thread> threads;
   std::vector<statistics> results(opt.Threads);
 
@@ -171,8 +175,7 @@ int main(int argc, char **argv) {
     threads.emplace_back(receiver, tid, opt.ServerIp, serverPort, keys.size(),
                          std::ref(results.at(tid)), sigstart);
   }
-  std::cout << keys.size() << ", multiplier: " << opt.Multiplier << '\n';
-  std::cout << "info: starting " << opt.Threads << " receiver threads\n";
+
   start.set_value();
   for (auto &t : threads)
     if (t.joinable())
