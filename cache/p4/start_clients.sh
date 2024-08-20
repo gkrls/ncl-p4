@@ -1,6 +1,7 @@
 #!/bin/bash
 
 N=16
+M=1024
 INTERFACE="ens4f0"
 
 # Base UDP port and IP address for the server
@@ -35,7 +36,7 @@ for i in $(seq 0 $((N - 1))); do
     sudo ethtool -U $INTERFACE flow-type udp4 dst-ip $CLIENT_IP dst-port $PORT action $i
 
     # Start the server process, binding it to the specific core using taskset
-    taskset -c $i $CLIENT_EXECUTABLE --ip $CLIENT_IP --port $PORT > client.$i.txt &
+    taskset -c $i $CLIENT_EXECUTABLE --ip $CLIENT_IP --port $PORT -m $M> client.$i.txt &
 
     echo "Started process on core $i, handling UDP port $PORT"
 done
