@@ -126,7 +126,6 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   // Send the packets
   for (auto m = 0; m < opt.Multiplier; ++m) {
-    log(tid) << "Sending iteration: " << m << '\n';
     for (auto i = 0; i < keys.size(); ++i) {
       // auto &k = keys[i];
       sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *) &server, sizeof(server));
