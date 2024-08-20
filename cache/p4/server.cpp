@@ -86,7 +86,7 @@ uint64_t stringToUInt64(const std::string &str) {
 void server(uint32_t tid,
             std::unordered_map<uint64_t, std::array<uint32_t, 4>> const &kvs,
             std::shared_future<void> sigstart) {
-  sigstart.wait();
+  // sigstart.wait();
 
   sockaddr_in addr;
   addr.sin_family = AF_INET;
@@ -204,12 +204,15 @@ int main(int argc, char **argv) {
   std::promise<void> start;
   std::shared_future<void> sigstart = start.get_future().share();
 
-  for (auto tid = 0; tid < opt.Threads; ++tid)
-    threads.emplace_back(server, tid, kvs, sigstart);
-
-  std::cout << "info: starting " << opt.Threads << " server threads\n";
-  start.set_value();
-  for (auto &t : threads)
-    if (t.joinable())
-      t.join();
+  if (opt.Threads == 1) {
+    server(0, kvs, sigstart);
+  } else {
+    for (auto tid = 0; tid < opt.Threads; ++tid)
+      threads.emplace_back(server, tid, kvs, sigstart);
+    std::cout << "info: starting " << opt.Threads << " server threads\n";
+    start.set_value();
+    for (auto &t : threads)
+      if (t.joinable())
+        t.join();
+  }
 }
