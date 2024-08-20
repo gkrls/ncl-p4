@@ -121,18 +121,18 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, size_t packe
         int packets_in_this_batch = std::min((unsigned long) batch_size, total_packets - batch * batch_size);
 
         // Prepare mmsghdr and iovec structures for this batch
-        for (int i = 0; i < packets_in_this_batch; ++i) {
-            iovecs[i].iov_base = static_cast<char*>(buffer) + total_bytes_received;
-            iovecs[i].iov_len = packet_size;
+        // for (int i = 0; i < packets_in_this_batch; ++i) {
+        //     iovecs[i].iov_base = static_cast<char*>(buffer) + total_bytes_received;
+        //     iovecs[i].iov_len = packet_size;
 
-            msgs[i].msg_hdr.msg_iov = &iovecs[i];
-            msgs[i].msg_hdr.msg_iovlen = 1;
-            msgs[i].msg_hdr.msg_name = nullptr;
-            msgs[i].msg_hdr.msg_namelen = 0;
-            msgs[i].msg_hdr.msg_control = nullptr;
-            msgs[i].msg_hdr.msg_controllen = 0;
-            msgs[i].msg_hdr.msg_flags = 0;
-        }
+        //     msgs[i].msg_hdr.msg_iov = &iovecs[i];
+        //     msgs[i].msg_hdr.msg_iovlen = 1;
+        //     msgs[i].msg_hdr.msg_name = nullptr;
+        //     msgs[i].msg_hdr.msg_namelen = 0;
+        //     msgs[i].msg_hdr.msg_control = nullptr;
+        //     msgs[i].msg_hdr.msg_controllen = 0;
+        //     msgs[i].msg_hdr.msg_flags = 0;
+        // }
 
         // Receive up to batch_size messages
         int num_received = recvmmsg(socket, msgs, packets_in_this_batch, 0, nullptr);
