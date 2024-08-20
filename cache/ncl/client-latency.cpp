@@ -190,9 +190,7 @@ void interactive_client(uint32_t tid, std::string serverAddr,
 }
 
 void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
-            std::vector<uint64_t> const &keys, statistics &stats,
-            std::shared_future<void> sigstart) {
-  sigstart.wait();
+            std::vector<uint64_t> const &keys, statistics &stats) {
 
   sockaddr_in server;
   server.sin_family = AF_INET;
@@ -300,8 +298,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
-           sigstart);
+    client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0]);
 
     // if (opt.Threads == 1) {
     //   std::cout << "info: client on main thread\n";
