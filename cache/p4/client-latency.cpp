@@ -240,7 +240,7 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     auto test = std::chrono::high_resolution_clock::now();
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     auto test2 = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(test2 - tStart1).count() << "us\n";
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(test2 - test).count() << "us\n";
   }
 
   std::exit(1);
