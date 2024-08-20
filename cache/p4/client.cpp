@@ -173,7 +173,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
             std::vector<uint64_t> const &keys, statistics &stats,
             std::shared_future<void> sigstart) {
   log(tid) << "with server " << serverAddr << "-" << serverPort << '\n';
-  sigstart.wait();
+  if (opt.Threads > 1)
+    sigstart.wait();
 
   sockaddr_in server;
   server.sin_family = AF_INET;
@@ -192,6 +193,9 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   }
 
   int reuse = 1;
+  int buffer = 4000000;
+  setsockopt(soc, SOL_SOCKET, SO_SNDBUF, (void *) &buffer, sizeof(buffer));
+  setsockopt(soc, SOL_SOCKET, SO_RCVBUF, (void *) &buffer, sizeof(buffer));
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
     log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
@@ -326,20 +330,31 @@ int main(int argc, char **argv) {
     std::vector<std::thread> threads;
     std::vector<statistics> results(opt.Threads);
 
+
+
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
-    for (auto tid = 0; tid < opt.Threads; ++tid) {
-      auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
-      threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                           threadKeys[tid], std::ref(results.at(tid)),
-                           sigstart);
+
+
+    if (opt.Threads == 1) {
+      std::cout << "info: starting " << opt.Threads << " client threads\n";
+      client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results.at(0), sigstart);
+    } else {
+      for (auto tid = 0; tid < opt.Threads; ++tid) {
+        auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
+        threads.emplace_back(client, tid, opt.ServerIp, serverPort,
+                            threadKeys[tid], std::ref(results.at(tid)),
+                            sigstart);
+      }
+      std::cout << "info: starting " << opt.Threads << " client threads\n";
+      start.set_value();
+      for (auto &t : threads)
+        if (t.joinable())
+          t.join();
     }
 
-    std::cout << "info: starting " << opt.Threads << " client threads\n";
-    start.set_value();
-    for (auto &t : threads)
-      if (t.joinable())
-        t.join();
+
+
 
     uint64_t totalQueries = 0;
     double totalThroughput1 = 0;
@@ -351,7 +366,7 @@ int main(int argc, char **argv) {
     for (auto i = 0; i < results.size(); ++i) {
       totalThroughput1 += results.at(i).queries /
                           ((double)(results.at(i).duration1 / 1000000.0));
-      totalThroughput1 += results.at(i).queries /
+      totalThroughput2 += results.at(i).queries /
                           ((double)(results.at(i).duration2 / 1000000.0));
       // totalQueries += results.at(i).queries;
       meanLatency1 += results.at(i).duration1 / ((double)results.at(i).queries);

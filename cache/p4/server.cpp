@@ -86,7 +86,8 @@ uint64_t stringToUInt64(const std::string &str) {
 void server(uint32_t tid,
             std::unordered_map<uint64_t, std::array<uint32_t, 4>> const &kvs,
             std::shared_future<void> sigstart) {
-  // sigstart.wait();
+  if (opt.Threads > 1)
+    sigstart.wait();
 
   sockaddr_in addr;
   addr.sin_family = AF_INET;
