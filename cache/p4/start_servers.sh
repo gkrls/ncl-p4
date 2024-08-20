@@ -7,7 +7,7 @@ BASE_PORT=4242
 SERVER_IP="42.0.0.4"
 
 # Path to the server executable
-SERVER_EXECUTABLE="server"
+SERVER_EXECUTABLE="./server"
 
 if [ "$1" == "kill" ]; then
     pkill -f $SERVER_EXECUTABLE
