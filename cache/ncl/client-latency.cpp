@@ -223,48 +223,30 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   sockaddr_in incaddrr;
   socklen_t inclen = sizeof(sockaddr_in);
-  // cache_h p;
-  // cache_h q;
-
-  auto tStart = std::chrono::high_resolution_clock::now();
-
   ncl_h p, q;
 
-  for (auto &k : keys) {
-    createGetRequest(p.cache, k);
-    int sent = sendto(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr *)&server,
-                      sizeof(server));
-#ifdef DEBUG
-    log(tid) << "query key: " << k << '\n';
-#endif
-    int recvd =
-        recvfrom(soc, &q, NCL_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-#ifdef DEBUG
-    log(tid) << "received: " << recvd << "bytes\n";
-#endif
-    q.cache.v[0] = ntohl(q.cache.v[0]);
-    q.cache.v[1] = ntohl(q.cache.v[1]);
-    q.cache.v[2] = ntohl(q.cache.v[2]);
-    q.cache.v[3] = ntohl(q.cache.v[3]);
-
-#ifdef DEBUG
-    uint64_t keyin = q.cache.key;
-    char key[9];
-    char val[17];
-    memset(key, 0, 9);
-    memset(val, 0, 17);
-    strncpy(key, (char *)&keyin, 8);
-    strncpy(val, (char *)&q.cache.v, 16);
-    log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.cache.op
-             << " - key: " << keyin << '/' << key << ", val: " << val << '\n';
-#endif
+  std::vector<cache_h> ps(keys.size());
+  for (auto i = 0; i < keys.size(); ++i) {
+    createGetRequest(ps[i], keys[i]);
   }
-  auto tEnd = std::chrono::high_resolution_clock::now();
 
-  stats.duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(tEnd - tStart)
-          .count();
-  stats.queries = keys.size();
+  uint32_t latency = 0;
+  std::vector<uint32_t> times(keys.size());
+  for (auto i = 0; i < keys.size(); ++i) {
+    sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+           sizeof(server));
+    auto a = std::chrono::high_resolution_clock::now();
+    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    auto b = std::chrono::high_resolution_clock::now();
+    auto l =
+        std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
+    times[i] = l;
+    latency += l;
+  }
+
+  std::cout << "mean: " << latency / keys.size() << " us\n";
+  std::cout << "mean: " << mean(times) << " us\n";
+  std::cout << "sdev: " << stdev(times) << " us\n";
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
@@ -314,44 +296,49 @@ int main(int argc, char **argv) {
       }
     }
 
-    if (opt.Threads == 1) {
-      std::cout << "info: client on main thread\n";
-      client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
-             sigstart);
-    } else {
-      std::vector<std::thread> threads;
-      for (auto tid = 0; tid < opt.Threads; ++tid) {
-        auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
-        threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                             threadKeys[tid], std::ref(results[tid]), sigstart);
-      }
-      std::cout << "info: starting " << opt.Threads << " client threads\n";
-      start.set_value();
-      for (auto &t : threads)
-        if (t.joinable())
-          t.join();
-    }
+    client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
+           sigstart);
 
-    uint64_t totalQueries = 0;
-    double totalThroughput = 0;
-    double meanLatency = 0;
+    // if (opt.Threads == 1) {
+    //   std::cout << "info: client on main thread\n";
+    //   client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
+    //          sigstart);
+    // } else {
+    //   std::vector<std::thread> threads;
+    //   for (auto tid = 0; tid < opt.Threads; ++tid) {
+    //     auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
+    //     threads.emplace_back(client, tid, opt.ServerIp, serverPort,
+    //                          threadKeys[tid], std::ref(results[tid]),
+    //                          sigstart);
+    //   }
+    //   std::cout << "info: starting " << opt.Threads << " client threads\n";
+    //   start.set_value();
+    //   for (auto &t : threads)
+    //     if (t.joinable())
+    //       t.join();
+    // }
 
-    for (auto i = 0; i < results.size(); ++i) {
-      totalThroughput += results.at(i).queries /
-                         ((double)(results.at(i).duration / 1000000.0));
-      meanLatency += results.at(i).duration / ((double)results.at(i).queries);
+    // uint64_t totalQueries = 0;
+    // double totalThroughput = 0;
+    // double meanLatency = 0;
 
-      std::cout << std::fixed << std::setprecision(3);
-      std::cout << "Total throughput: " << totalThroughput
-                << " queries/second\n";
-      std::cout << "   Mean latency1: " << (meanLatency / results.size())
-                << " us\n";
-    }
+    // for (auto i = 0; i < results.size(); ++i) {
+    //   totalThroughput += results.at(i).queries /
+    //                      ((double)(results.at(i).duration / 1000000.0));
+    //   meanLatency += results.at(i).duration /
+    //   ((double)results.at(i).queries);
 
-    std::cout << std::fixed << std::setprecision(3);
-    std::cout << "Total throughput: " << totalThroughput
-              << " queries per second\n";
-    std::cout << "    Mean latency: " << (meanLatency / results.size())
-              << " us\n";
+    //   std::cout << std::fixed << std::setprecision(3);
+    //   std::cout << "Total throughput: " << totalThroughput
+    //             << " queries/second\n";
+    //   std::cout << "   Mean latency1: " << (meanLatency / results.size())
+    //             << " us\n";
+    // }
+
+    // std::cout << std::fixed << std::setprecision(3);
+    // std::cout << "Total throughput: " << totalThroughput
+    //           << " queries per second\n";
+    // std::cout << "    Mean latency: " << (meanLatency / results.size())
+    //           << " us\n";
   }
 }

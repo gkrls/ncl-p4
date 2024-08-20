@@ -6,6 +6,7 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include "utils.h"
 
 inline void exitWithErrorMessage(const std::string &msg) {
   std::cout << "error: " << msg << '\n';

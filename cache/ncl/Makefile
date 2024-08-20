@@ -36,6 +36,9 @@ client: client.cpp client_utils.h
 client: client-latency.cpp client_utils.h
 	g++ client-latency.cpp -O3 -o client-latency -lpthread
 
+client: client-latency.cpp client_utils.h
+	g++ client-latency.cpp -O3 -o client-latency -lpthread
+
 client-debug: client.cpp client_utils.h
 	g++ -g -DDEBUG client.cpp -o client -lpthread
 

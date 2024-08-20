@@ -221,52 +221,24 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   auto original_key_size = keys.size() / opt.Multiplier;
   auto tStart1 = std::chrono::high_resolution_clock::now();
 
-  // for (auto j = 0; j < opt.Multiplier ; ++ j) {
-  //   for (auto i = 0; i < original_key_size; ++i) {
-  //     auto idx = j * original_key_size + i;
-  //     sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-  //             sizeof(server));
-  //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr,
-  //     &inclen);
-  //   }
-  // }
-
-
   // Uncomment this when using small -m for latency measurements
   uint32_t latency = 0;
   std::vector<uint32_t> times(keys.size());
   for (auto i = 0; i < keys.size(); ++i) {
     sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
            sizeof(server));
-    auto test = std::chrono::high_resolution_clock::now();
+    auto a = std::chrono::high_resolution_clock::now();
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    auto test2 = std::chrono::high_resolution_clock::now();
-    auto l = std::chrono::duration_cast<std::chrono::microseconds>(test2 - test).count();
+    auto b = std::chrono::high_resolution_clock::now();
+    auto l =
+        std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
     times[i] = l;
     latency += l;
   }
 
-  std::cout << "mean: " << latency / keys.size()  << " us\n";
-  std::cout << "mean: " << mean(times)  << " us\n";
+  std::cout << "mean: " << latency / keys.size() << " us\n";
+  std::cout << "mean: " << mean(times) << " us\n";
   std::cout << "sdev: " << stdev(times) << " us\n";
-  std::exit(1);
-
-  auto tStart2 = std::chrono::high_resolution_clock::now();
-
-
-  for (auto i = 0; i < keys.size(); ++i) {
-    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-  }
-
-  auto tEnd = std::chrono::high_resolution_clock::now();
-
-  stats.duration1 =
-      std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart1)
-          .count();
-  stats.duration2 =
-      std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart2)
-          .count();
-  stats.queries = keys.size();
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
@@ -316,49 +288,26 @@ int main(int argc, char **argv) {
       }
     }
 
-    if (opt.Threads == 1) {
-      std::cout << "info: client on main thread\n";
-      client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
-             sigstart);
-    } else {
+    // if (opt.Threads == 1) {
+    //   std::cout << "info: client on main thread\n";
+    //   client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
+    //          sigstart);
+    // } else {
 
-      std::vector<std::thread> threads;
-      for (auto tid = 0; tid < opt.Threads; ++tid) {
-        auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
-        threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                             threadKeys[tid], std::ref(results[tid]), sigstart);
-      }
-      std::cout << "info: starting " << opt.Threads << " client threads\n";
-      start.set_value();
-      for (auto &t : threads)
-        if (t.joinable())
-          t.join();
-    }
+    //   std::vector<std::thread> threads;
+    //   for (auto tid = 0; tid < opt.Threads; ++tid) {
+    //     auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
+    //     threads.emplace_back(client, tid, opt.ServerIp, serverPort,
+    //                          threadKeys[tid], std::ref(results[tid]), sigstart);
+    //   }
+    //   std::cout << "info: starting " << opt.Threads << " client threads\n";
+    //   start.set_value();
+    //   for (auto &t : threads)
+    //     if (t.joinable())
+    //       t.join();
+    // }
 
-    uint64_t totalQueries = 0;
-    double totalThroughput1 = 0;
-    double totalThroughput2 = 0;
-
-    double meanLatency1 = 0;
-    double meanLatency2 = 0;
-
-    for (auto i = 0; i < results.size(); ++i) {
-      totalThroughput1 += results.at(i).queries /
-                          ((double)(results.at(i).duration1 / 1000000.0));
-      totalThroughput2 += results.at(i).queries /
-                          ((double)(results.at(i).duration2 / 1000000.0));
-      // totalQueries += results.at(i).queries;
-      meanLatency1 += results.at(i).duration1 / ((double)results.at(i).queries);
-      meanLatency2 += results.at(i).duration2 / ((double)results.at(i).queries);
-    }
-    std::cout << std::fixed << std::setprecision(3);
-    std::cout << "Total throughput1: " << totalThroughput1
-              << " queries/second\n";
-    std::cout << "Total throughput2: " << totalThroughput2
-              << " queries/second\n";
-    std::cout << "    Mean latency1: " << (meanLatency1 / results.size())
-              << " us\n";
-    std::cout << "    Mean latency2: " << (meanLatency2 / results.size())
-              << " us\n";
+    client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
+           sigstart);
   }
 }
