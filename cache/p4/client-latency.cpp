@@ -13,6 +13,7 @@
 #include <ostream>
 #include <random>
 #include <sys/socket.h>
+#include <vector>
 
 #include "client_utils.h"
 
@@ -215,8 +216,6 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     createGetRequest(ps[i], keys[i]);
   }
 
-  std::vector<uint64_t> times(keys.size());
-
   // Send the packets
   // for (auto m = 0; m < opt.Multiplier; ++m) {
   auto original_key_size = keys.size() / opt.Multiplier;
@@ -235,19 +234,25 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   // Uncomment this when using small -m for latency measurements
   uint32_t latency = 0;
+  std::vector<uint32_t> times(keys.size());
   for (auto i = 0; i < keys.size(); ++i) {
     sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
            sizeof(server));
     auto test = std::chrono::high_resolution_clock::now();
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     auto test2 = std::chrono::high_resolution_clock::now();
-    latency += std::chrono::duration_cast<std::chrono::microseconds>(test2 - test).count();
+    auto l = std::chrono::duration_cast<std::chrono::microseconds>(test2 - test).count();
+    times[i] = l;
+    latency += l;
   }
-  std::cout << latency / keys.size()  << " us\n";
 
+  std::cout << "mean: " << latency / keys.size()  << " us\n";
+  std::cout << "mean: " << mean(times)  << " us\n";
+  std::cout << "sdev: " << stdev(times) << " us\n";
   std::exit(1);
 
   auto tStart2 = std::chrono::high_resolution_clock::now();
+
 
   for (auto i = 0; i < keys.size(); ++i) {
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
