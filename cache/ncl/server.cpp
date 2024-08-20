@@ -130,19 +130,14 @@ void server(uint32_t tid,
 
     p.cache.key = be64toh(p.cache.key);
 
-#ifdef DEBUG
-    log(tid) << "received op:" << (uint16_t)p.cache.op
-             << " key: " << p.cache.key << " : " << (char *)&p.cache.key
-             << '\n';
-#endif
     p.ncp.d_dst = 0; // we don't want the device to do anything
     p.ncp.h_dst = 2; // p.ncp.h_src;
     p.ncp.d_src = 0;
     p.ncp.h_src = 4;
 
-    std::cout << "NCP: hsrc: " << (uint32_t) p.ncp.h_src << ", hdst: " << (uint32_t) p.ncp.h_dst
-              << " d_src: " << (uint32_t)  p.ncp.d_src << " d_dst: " << (uint32_t) p.ncp.d_dst
-              << " cid: " << (uint32_t) p.ncp.cid << '\n';
+    // std::cout << "NCP: hsrc: " << (uint32_t) p.ncp.h_src << ", hdst: " << (uint32_t) p.ncp.h_dst
+    //           << " d_src: " << (uint32_t)  p.ncp.d_src << " d_dst: " << (uint32_t) p.ncp.d_dst
+    //           << " cid: " << (uint32_t) p.ncp.cid << '\n';
 
     if (auto It = kvs.find(p.cache.key); It != kvs.end()) {
 
