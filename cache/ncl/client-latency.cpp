@@ -233,10 +233,10 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   uint32_t latency = 0;
   std::vector<uint32_t> times(keys.size());
   for (auto i = 0; i < keys.size(); ++i) {
-    sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+    sendto(soc, &ps[i], NCL_HEADER_SIZE, 0, (sockaddr *)&server,
            sizeof(server));
     auto a = std::chrono::high_resolution_clock::now();
-    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    recvfrom(soc, &q, NCL_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     auto b = std::chrono::high_resolution_clock::now();
     auto l =
         std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
