@@ -1,5 +1,6 @@
 #!/bin/bash
 
+N=16
 INTERFACE="ens4f0"
 
 # Base UDP port and IP address for the server
@@ -13,16 +14,20 @@ CLIENT_EXECUTABLE="./client"
 if [ "$1" == "kill" ]; then
     pkill -f $CLIENT_EXECUTABLE
     echo "Killed all $CLIENT_EXECUTABLE processes."
-    sudo ethtool -U ens4f0 clear
+    filter_ids=$(sudo ethtool -u $INTERFACE | grep "Filter: " | awk '{print $2}')
+    # Delete each filter
+    for id in $filter_ids; do
+        sudo ethtool -U $INTERFACE delete $id
+        echo "Deleted filter ID: $id"
+    done
     sudo ethtool -K ens4f0 ntuple off
     exit 0
-    for i in $(seq 0 15); do
 fi
 
 sudo ethtool -K ens4f0 ntuple on
 
 # Loop to set up n-tuple rules and start processes
-for i in $(seq 0 15); do
+for i in $(seq 0 $((N - 1))); do
     # Calculate the UDP port for this core
     PORT=$((BASE_PORT + i))
 
