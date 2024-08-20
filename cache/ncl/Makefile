@@ -33,6 +33,9 @@ hosts-debug: client-debug server-debug
 client: client.cpp client_utils.h
 	g++ client.cpp -O3 -o client -pthread
 
+client: client-latency.cpp client_utils.h
+	g++ client-latency.cpp -O3 -o client-latency -lpthread
+
 client-debug: client.cpp client_utils.h
 	g++ -g -DDEBUG client.cpp -o client -lpthread
 
