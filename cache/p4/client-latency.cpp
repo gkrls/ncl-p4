@@ -194,8 +194,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   int reuse = 1;
   int buffer = 4000000;
-  setsockopt(soc, SOL_SOCKET, SO_SNDBUF, (void *) &buffer, sizeof(buffer));
-  setsockopt(soc, SOL_SOCKET, SO_RCVBUF, (void *) &buffer, sizeof(buffer));
+  setsockopt(soc, SOL_SOCKET, SO_SNDBUF, (void *)&buffer, sizeof(buffer));
+  setsockopt(soc, SOL_SOCKET, SO_RCVBUF, (void *)&buffer, sizeof(buffer));
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
     log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
@@ -226,7 +226,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   //     auto idx = j * original_key_size + i;
   //     sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
   //             sizeof(server));
-  //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr,
+  //     &inclen);
   //   }
   // }
 
@@ -234,12 +235,12 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
   // Uncomment this when using small -m for latency measurements
   for (auto i = 0; i < keys.size(); ++i) {
-    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+           sizeof(server));
   }
   for (auto i = 0; i < keys.size(); ++i) {
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   }
-
 
   auto tEnd = std::chrono::high_resolution_clock::now();
 
@@ -303,16 +304,15 @@ int main(int argc, char **argv) {
 
     if (opt.Threads == 1) {
       std::cout << "info: starting " << opt.Threads << " client threads\n";
-      client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0], sigstart);
+      client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0],
+             sigstart);
     } else {
-
 
       std::vector<std::thread> threads;
       for (auto tid = 0; tid < opt.Threads; ++tid) {
         auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
         threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                            threadKeys[tid], std::ref(results[tid]),
-                            sigstart);
+                             threadKeys[tid], std::ref(results[tid]), sigstart);
       }
       std::cout << "info: starting " << opt.Threads << " client threads\n";
       start.set_value();
@@ -320,9 +320,6 @@ int main(int argc, char **argv) {
         if (t.joinable())
           t.join();
     }
-
-
-
 
     uint64_t totalQueries = 0;
     double totalThroughput1 = 0;
