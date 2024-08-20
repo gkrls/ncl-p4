@@ -230,59 +230,60 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
 
 
-  int sockets[4];
+  // int sockets[4];
 
-  for (int i = 0; i < 4; ++i) {
-    sockets[i] = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockets[i] < 0) {
-        perror("socket");
-        exit(EXIT_FAILURE);
-    }
+  // for (int i = 0; i < 4; ++i) {
+  //   sockets[i] = socket(AF_INET, SOCK_DGRAM, 0);
+  //   if (sockets[i] < 0) {
+  //       perror("socket");
+  //       exit(EXIT_FAILURE);
+  //   }
 
-    sockaddr_in server_addr;
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(opt.Port + tid * 4 + i); // Unique port per socket
+  //   sockaddr_in server_addr;
+  //   memset(&server_addr, 0, sizeof(server_addr));
+  //   server_addr.sin_family = AF_INET;
+  //   server_addr.sin_addr.s_addr = INADDR_ANY;
+  //   server_addr.sin_port = htons(opt.Port + tid * 4 + i); // Unique port per socket
 
-    int reuse = 1;
-    setsockopt(sockets[i], SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-    setsockopt(sockets[i], SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
-    if (bind(sockets[i], (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        perror("bind");
-        close(sockets[i]);
-        exit(EXIT_FAILURE);
-    }
+  //   int reuse = 1;
+  //   setsockopt(sockets[i], SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+  //   setsockopt(sockets[i], SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
+  //   if (bind(sockets[i], (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+  //       perror("bind");
+  //       close(sockets[i]);
+  //       exit(EXIT_FAILURE);
+  //   }
+  // }
+  // auto tStart = std::chrono::high_resolution_clock::now();
+  // // packet_size, total_length, batch_size
+  // // opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, CACHE_HEADER_SIZE, 16
+  // listen_to_sockets(sockets, 4, CACHE_HEADER_SIZE, opt.Multiplier * keys * CACHE_HEADER_SIZE, 16);
+
+  auto soc = socket(AF_INET, SOCK_DGRAM, 0);
+  if (soc < 0) {
+    std::cerr << "Socket creation failed: " << strerror(errno) << std::endl;
+    return;
   }
-  auto tStart = std::chrono::high_resolution_clock::now();
-  // packet_size, total_length, batch_size
-  // opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, CACHE_HEADER_SIZE, 16
-  listen_to_sockets(sockets, 4, CACHE_HEADER_SIZE, opt.Multiplier * keys * CACHE_HEADER_SIZE, 16);
-  // auto soc = socket(AF_INET, SOCK_DGRAM, 0);
-  // if (soc < 0) {
-  //   std::cerr << "Socket creation failed: " << strerror(errno) << std::endl;
-  //   return;
-  // }
 
-  // int reuse = 1;
-  // struct ifreq ifr;
-  // memset(&ifr, 0, sizeof(ifr));
-  // snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "ens4f0");
-  // setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-  // setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
-  // if (setsockopt(soc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-  //     std::cerr << "Binding to interface failed: " << strerror(errno) << std::endl;
-  //     return;
-  // }
-  // if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
-  //   log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
-  //            << '\n';
-  //   return;
-  // }
+  int reuse = 1;
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "ens4f0");
+  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+  setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
+  if (setsockopt(soc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
+      std::cerr << "Binding to interface failed: " << strerror(errno) << std::endl;
+      return;
+  }
+  if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
+    log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
+             << '\n';
+    return;
+  }
 
-  // sockaddr_in incaddrr;
-  // socklen_t inclen = sizeof(sockaddr_in);
-  // cache_h *q = (cache_h *) std::malloc((opt.Multiplier * keys) * sizeof(cache_h));
+  sockaddr_in incaddrr;
+  socklen_t inclen = sizeof(sockaddr_in);
+  cache_h *q = (cache_h *) std::malloc((opt.Multiplier * keys) * sizeof(cache_h));
 
   // First packet indicates we not start receiving, start counting time
   // recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
@@ -292,9 +293,9 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   // }
   // auto tEnd = std::chrono::high_resolution_clock::now();
 
-  // int recvd = recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
-  // auto tStart = std::chrono::high_resolution_clock::now();
-  // recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, CACHE_HEADER_SIZE, 16);
+  int recvd = recvfrom(soc, q, CACHE_HEADER_SIZE, 0, (sockaddr *) &incaddrr, &inclen);
+  auto tStart = std::chrono::high_resolution_clock::now();
+  recv_all_udp_batch(soc, q, opt.Multiplier * keys * CACHE_HEADER_SIZE - recvd, CACHE_HEADER_SIZE, 16);
   auto tEnd = std::chrono::high_resolution_clock::now();
   stats.duration =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart)
