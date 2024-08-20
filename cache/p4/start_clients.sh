@@ -13,8 +13,12 @@ CLIENT_EXECUTABLE="./client"
 if [ "$1" == "kill" ]; then
     pkill -f $CLIENT_EXECUTABLE
     echo "Killed all $CLIENT_EXECUTABLE processes."
+    sudo ethtool -U ens4f0 clear
+    sudo ethtool -K ens4f0 ntuple off
     exit 0
 fi
+
+sudo ethtool -K ens4f0 ntuple on
 
 # Loop to set up n-tuple rules and start processes
 for i in $(seq 0 15); do

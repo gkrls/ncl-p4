@@ -224,16 +224,17 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       auto &k = keys[i];
       sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
              sizeof(server));
+      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     }
   }
 
   auto tStart2 = std::chrono::high_resolution_clock::now();
 
-  for (auto m = 0; m < opt.Multiplier; ++m) {
-    for (auto i = 0; i < keys.size(); ++i) {
-      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    }
-  }
+  // for (auto m = 0; m < opt.Multiplier; ++m) {
+  //   for (auto i = 0; i < keys.size(); ++i) {
+  //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  //   }
+  // }
 
   auto tEnd = std::chrono::high_resolution_clock::now();
 
