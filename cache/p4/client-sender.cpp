@@ -104,7 +104,7 @@ void sender(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   }
 
   int reuse = 1;
-  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+  // setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   // setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
   if (bind(soc, (sockaddr *)&addr, sizeof(sockaddr)) < 0) {
     log(tid) << "error: bind socket to " << opt.IP << "." << opt.Port + tid
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
   std::cout << "info: starting " << opt.Threads << " sender threads\n";
   start.set_value();
   for (auto &t : threads)
-    if (t.joinable())
+    // if (t.joinable())
       t.join();
 
   std::cout << "info: finished sending "
