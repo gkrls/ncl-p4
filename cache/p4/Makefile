@@ -57,7 +57,7 @@ client: client.cpp client_utils.h
 	g++ client.cpp -O3 -DNDEBUG -std=c++17 -o client -lpthread
 
 client-latency: client-latency.cpp client_utils.h
-	g++ client.cpp -O3 -DNDEBUG -std=c++17 -o client-latency -lpthread
+	g++ client-latency.cpp -O3 -DNDEBUG -std=c++17 -o client-latency -lpthread
 
 client2: client2.cpp client_utils.h
 	g++ client2.cpp -O3 -DNDEBUG -std=c++17 -o client2 -lpthread
