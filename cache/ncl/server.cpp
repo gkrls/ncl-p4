@@ -127,6 +127,7 @@ void server(uint32_t tid,
       log(tid) << "recv error\n";
       continue;
     }
+
     p.cache.key = be64toh(p.cache.key);
 
 #ifdef DEBUG
@@ -135,7 +136,7 @@ void server(uint32_t tid,
              << '\n';
 #endif
     p.ncp.d_dst = 0; // we don't want the device to do anything
-    p.ncp.h_dst = p.ncp.h_src;
+    p.ncp.h_dst = 2; // p.ncp.h_src;
     p.ncp.d_src = 0;
     p.ncp.h_src = 4;
 
