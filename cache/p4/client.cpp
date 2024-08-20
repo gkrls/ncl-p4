@@ -208,8 +208,6 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   cache_h p;
   cache_h q;
 
-  auto tStart1 = std::chrono::high_resolution_clock::now();
-
   // Create the packets
   std::vector<cache_h> ps(keys.size());
   for (auto i = 0; i < keys.size(); ++i) {
@@ -221,6 +219,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   // Send the packets
   // for (auto m = 0; m < opt.Multiplier; ++m) {
   auto original_key_size = keys.size() / opt.Multiplier;
+
+  auto tStart1 = std::chrono::high_resolution_clock::now();
 
   for (auto j = 0; j < opt.Multiplier ; ++ j) {
     for (auto i = 0; i < original_key_size; ++i) {
@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
       for (auto tid = 0; tid < opt.Threads; ++tid) {
         auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
         threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                            threadKeys[tid], std::ref(results[0]),
+                            threadKeys[tid], std::ref(results[tid]),
                             sigstart);
       }
       std::cout << "info: starting " << opt.Threads << " client threads\n";
