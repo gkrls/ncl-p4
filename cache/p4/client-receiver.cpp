@@ -113,8 +113,8 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, size_t packe
     size_t total_packets = length / packet_size;
     size_t batches = (total_packets + batch_size - 1) / batch_size; // Total number of batches needed
 
-    struct mmsghdr* msgs = new mmsghdr[batch_size];
-    struct iovec* iovecs = new iovec[batch_size];
+    static struct mmsghdr* msgs = new mmsghdr[batch_size];
+    static struct iovec* iovecs = new iovec[batch_size];
 
     for (size_t batch = 0; batch < batches; ++batch) {
         // Number of packets to receive in this batch
@@ -151,8 +151,8 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, size_t packe
         }
     }
 
-    delete[] msgs;
-    delete[] iovecs;
+    // delete[] msgs;
+    // delete[] iovecs;
     return total_bytes_received;
 }
 
