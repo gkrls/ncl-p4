@@ -139,9 +139,9 @@ void server(uint32_t tid,
     p.ncp.d_src = 0;
     p.ncp.h_src = 4;
 
-    std::cout << "NCP: hsrc: " << p.ncp.h_src << ", hdst: " << p.ncp.h_dst
-              << " d_src: " << p.ncp.d_src << " d_dst: " << p.ncp.d_dst
-              << " cid: " << p.ncp.cid << '\n';
+    std::cout << "NCP: hsrc: " << (uint32_t) p.ncp.h_src << ", hdst: " << (uint32_t) p.ncp.h_dst
+              << " d_src: " << (uint32_t)  p.ncp.d_src << " d_dst: " << (uint32_t) p.ncp.d_dst
+              << " cid: " << (uint32_t) p.ncp.cid << '\n';
 
     if (auto It = kvs.find(p.cache.key); It != kvs.end()) {
 
