@@ -243,6 +243,9 @@ void receiver(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(opt.Port + tid * 4 + i); // Unique port per socket
 
+    int reuse = 1;
+    setsockopt(sockets[i], SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+    setsockopt(sockets[i], SOL_SOCKET, SO_REUSEPORT, (void *)&reuse, sizeof(reuse));
     if (bind(sockets[i], (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         perror("bind");
         close(sockets[i]);
