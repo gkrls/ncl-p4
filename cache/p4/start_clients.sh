@@ -16,6 +16,7 @@ if [ "$1" == "kill" ]; then
     sudo ethtool -U ens4f0 clear
     sudo ethtool -K ens4f0 ntuple off
     exit 0
+    for i in $(seq 0 15); do
 fi
 
 sudo ethtool -K ens4f0 ntuple on
