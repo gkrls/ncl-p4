@@ -221,14 +221,15 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   auto original_key_size = keys.size() / opt.Multiplier;
   auto tStart1 = std::chrono::high_resolution_clock::now();
 
-  for (auto j = 0; j < opt.Multiplier ; ++ j) {
-    for (auto i = 0; i < original_key_size; ++i) {
-      auto idx = j * original_key_size + i;
-      sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-              sizeof(server));
-      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    }
-  }
+  // for (auto j = 0; j < opt.Multiplier ; ++ j) {
+  //   for (auto i = 0; i < original_key_size; ++i) {
+  //     auto idx = j * original_key_size + i;
+  //     sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+  //             sizeof(server));
+  //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+  //   }
+  // }
+
   auto tStart2 = std::chrono::high_resolution_clock::now();
 
   // Uncomment this when using small -m for latency measurements
@@ -239,50 +240,8 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   }
 
-  // for (auto m = 0; m < opt.Multiplier; ++m) {
-  //   for (auto i = 0; i < keys.size(); ++i) {
-  //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-  //   }
-  // }
 
   auto tEnd = std::chrono::high_resolution_clock::now();
-
-  //   auto tStart = std::chrono::high_resolution_clock::now();
-  //   for (auto &k : keys) {
-  //     createGetRequest(p, k);
-
-  //     auto tStart = std::chrono::high_resolution_clock::now();
-
-  //     int sent = sendto(soc, &p, CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-  //                       sizeof(server));
-  // #ifdef DEBUG
-  //     log(tid) << "query key: " << k << '\n';
-  // #endif
-  //     int recvd =
-  //         recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr,
-  //         &inclen);
-  // #ifdef DEBUG
-  //     log(tid) << "received: " << recvd << "bytes\n";
-  // #endif
-  //     q.v[0] = ntohl(q.v[0]);
-  //     q.v[1] = ntohl(q.v[1]);
-  //     q.v[2] = ntohl(q.v[2]);
-  //     q.v[3] = ntohl(q.v[3]);
-
-  // #ifdef DEBUG
-  //     uint64_t keyin = q.key;
-  //     char key[9];
-  //     char val[17];
-  //     memset(key, 0, 9);
-  //     memset(val, 0, 17);
-  //     strncpy(key, (char *)&keyin, 8);
-  //     strncpy(val, (char *)&q.v, 16);
-  //     log(tid) << "received(" << recvd << "B) op: " << (uint16_t)q.op
-  //              << " - key: " << keyin << '/' << key << ", val: " << val <<
-  //              '\n';
-  // #endif
-  //   }
-  //   auto tEnd = std::chrono::high_resolution_clock::now();
 
   stats.duration1 =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart1)
