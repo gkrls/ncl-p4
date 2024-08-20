@@ -138,6 +138,7 @@ ssize_t recv_all_udp_batch(int socket, void* buffer, size_t length, size_t packe
         int num_received = recvmmsg(socket, msgs, packets_in_this_batch, 0, nullptr);
         if (num_received < 0) {
             std::cout << "RECD: " << num_received << '\n';
+            std::cerr << "recvmmsg failed: " << strerror(errno) << std::endl;
             perror("recvmmsg");
             delete[] msgs;
             delete[] iovecs;
