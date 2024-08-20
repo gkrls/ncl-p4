@@ -219,7 +219,6 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   // Send the packets
   // for (auto m = 0; m < opt.Multiplier; ++m) {
   auto original_key_size = keys.size() / opt.Multiplier;
-
   auto tStart1 = std::chrono::high_resolution_clock::now();
 
   for (auto j = 0; j < opt.Multiplier ; ++ j) {
@@ -228,15 +227,22 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
               sizeof(server));
     }
-    for (auto i = 0; i < original_key_size; ++i) {
+  }
+  auto tStart2 = std::chrono::high_resolution_clock::now();
+  for (auto j = 0; j < opt.Multiplier ; ++ j) {
+    // for (auto i = 0; i < original_key_size; ++i) {
+    //   auto idx = j * original_key_size + i;
+    //   sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+    //           sizeof(server));
+    // }
+    for (auto i = 0; i < keys.size(); ++i) {
       recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     }
   }
 
   // }
 
-  auto tStart2 = std::chrono::high_resolution_clock::now();
-
+  
   // for (auto m = 0; m < opt.Multiplier; ++m) {
   //   for (auto i = 0; i < keys.size(); ++i) {
   //     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
