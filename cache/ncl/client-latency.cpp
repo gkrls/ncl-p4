@@ -238,7 +238,10 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     sendto(soc, &ps[i], NCL_HEADER_SIZE, 0, (sockaddr *)&server,
            sizeof(server));
     auto a = std::chrono::high_resolution_clock::now();
-    recvfrom(soc, &q, NCL_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    int r = recvfrom(soc, &q, NCL_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    if (r < 0) {
+      std::cout << "recv error!\n";
+    }
     auto b = std::chrono::high_resolution_clock::now();
     auto l =
         std::chrono::duration_cast<std::chrono::microseconds>(b - a).count();
