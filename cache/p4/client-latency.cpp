@@ -234,14 +234,16 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
 
 
   // Uncomment this when using small -m for latency measurements
+  uint32_t latency = 0;
   for (auto i = 0; i < keys.size(); ++i) {
     sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
            sizeof(server));
     auto test = std::chrono::high_resolution_clock::now();
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     auto test2 = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(test2 - test).count() << "us\n";
+    latency += std::chrono::duration_cast<std::chrono::microseconds>(test2 - test).count();
   }
+  std::cout << latency / keys.size()  << " us\n";
 
   std::exit(1);
 
