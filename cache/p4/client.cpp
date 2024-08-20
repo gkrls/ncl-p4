@@ -226,6 +226,7 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
       auto idx = j * original_key_size + i;
       sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
               sizeof(server));
+      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     }
   }
   auto tStart2 = std::chrono::high_resolution_clock::now();
@@ -235,9 +236,9 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
     //   sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
     //           sizeof(server));
     // }
-    for (auto i = 0; i < keys.size(); ++i) {
-      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    }
+    // for (auto i = 0; i < keys.size(); ++i) {
+    //   recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    // }
   // }
 
   // }
