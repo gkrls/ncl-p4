@@ -221,14 +221,15 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   // Send the packets
   // for (auto m = 0; m < opt.Multiplier; ++m) {
   auto original_key_size = keys.size() / opt.Multiplier;
-  std::vector<cache_h> qs(original_key_size);
-  for (auto start = 0; start < keys.size(); start += original_key_size) {
-    for (auto i = start; i < start + original_key_size; ++i) {
-      sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+
+  for (auto j = 0; j < opt.Multiplier ; ++ j) {
+    for (auto i = 0; i < original_key_size; ++i) {
+      auto idx = j * original_key_size + i;
+      sendto(soc, &ps[idx], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
               sizeof(server));
     }
-    for (auto i = start; i < start + original_key_size; ++i) {
-      recvfrom(soc, &qs[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
+    for (auto i = 0; i < original_key_size; ++i) {
+      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
     }
   }
 
@@ -349,7 +350,7 @@ int main(int argc, char **argv) {
       for (auto tid = 0; tid < opt.Threads; ++tid) {
         auto serverPort = opt.ServerPort + (tid % opt.ServerPorts);
         threads.emplace_back(client, tid, opt.ServerIp, serverPort,
-                            threadKeys[tid], std::ref(results.at(tid)),
+                            threadKeys[tid], std::ref(results[0]),
                             sigstart);
       }
       std::cout << "info: starting " << opt.Threads << " client threads\n";
