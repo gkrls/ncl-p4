@@ -2,7 +2,7 @@ from netaddr import IPAddress, EUI
 import json
 import os
 
-NCL_REFLECT_ACTION=6
+# NCL_REFLECT_ACTION=6
 NCL_MULTICAST_ACTION=9
 NCL_DROP_ACTION=3
 

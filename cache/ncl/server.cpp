@@ -56,30 +56,30 @@ struct __attribute__((packed)) ncl_h {
 
 inline bool isset(uint32_t value, int i) { return (value & (1 << i)) != 0; }
 
-void createCachePacket(cache_h &c, uint64_t key, uint32_t *val, cache_op op,
-                       uint32_t mask = 0) {
-  c.key = key;
+// void createCachePacket(cache_h &c, uint64_t key, uint32_t *val, cache_op op,
+//                        uint32_t mask = 0) {
+//   c.key = key;
 
-  if (val) {
-    c.v[0] = val[0];
-    c.v[1] = val[1];
-    c.v[2] = val[2];
-    c.v[3] = val[3];
-  } else {
-    c.v[0] = 0;
-    c.v[1] = 0;
-    c.v[2] = 0;
-    c.v[3] = 0;
-  }
+//   if (val) {
+//     c.v[0] = val[0];
+//     c.v[1] = val[1];
+//     c.v[2] = val[2];
+//     c.v[3] = val[3];
+//   } else {
+//     c.v[0] = 0;
+//     c.v[1] = 0;
+//     c.v[2] = 0;
+//     c.v[3] = 0;
+//   }
 
-  c.op = op;
-  c.mask = mask;
-  c.hot = 0;
-}
+//   c.op = op;
+//   c.mask = mask;
+//   c.hot = 0;
+// }
 
-void createGetRequest(cache_h &c, uint64_t key) {
-  createCachePacket(c, key, nullptr, cache_op::GET_RQ);
-}
+// void createGetRequest(cache_h &c, uint64_t key) {
+//   createCachePacket(c, key, nullptr, cache_op::GET_RQ);
+// }
 
 static options opt;
 
@@ -116,13 +116,13 @@ void server(uint32_t tid,
 
   log(tid) << "Listening on " << opt.IP << '.' << opt.Port + tid << '\n';
 
-
   while (true) {
     sockaddr_in inaddr;
     socklen_t inlen = sizeof(sockaddr_in);
 
     ncl_h p = {};
-    int recvd = recvfrom(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr*) &inaddr, &inlen);
+    int recvd =
+        recvfrom(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr *)&inaddr, &inlen);
     if (recvd < 0) {
       log(tid) << "recv error\n";
       continue;
@@ -130,12 +130,18 @@ void server(uint32_t tid,
     p.cache.key = be64toh(p.cache.key);
 
 #ifdef DEBUG
-    log(tid) << "received op:" << (uint16_t)p.cache.op << " key: " << p.cache.key << " : "
-             << (char *)&p.cache.key << '\n';
+    log(tid) << "received op:" << (uint16_t)p.cache.op
+             << " key: " << p.cache.key << " : " << (char *)&p.cache.key
+             << '\n';
 #endif
     p.ncp.d_dst = 0; // we don't want the device to do anything
     p.ncp.h_dst = p.ncp.h_src;
-    p.ncp.h_src = opt.NclID;
+    p.ncp.d_src = 0;
+    p.ncp.h_src = 4;
+
+    std::cout << "NCP: hsrc: " << p.ncp.h_src << ", hdst: " << p.ncp.h_dst
+              << " d_src: " << p.ncp.d_src << " d_dst: " << p.ncp.d_dst
+              << " cid: " << p.ncp.cid << '\n';
 
     if (auto It = kvs.find(p.cache.key); It != kvs.end()) {
 
@@ -155,12 +161,12 @@ void server(uint32_t tid,
       log(tid) << "key not found\n";
     }
 #endif
-    sendto(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr*) &inaddr, inlen);
+    sendto(soc, &p, NCL_HEADER_SIZE, 0, (sockaddr *)&inaddr, inlen);
   }
 }
 
 void loadKvs(const char *f,
-              std::unordered_map<uint64_t, std::array<uint32_t, 4>> &kvs) {
+             std::unordered_map<uint64_t, std::array<uint32_t, 4>> &kvs) {
   std::ifstream file(f);
 
   if (!file) {
