@@ -54,6 +54,7 @@ bfrt.pre.mgid.add(MGID=1, MULTICAST_NODE_ID=[1],
                   MULTICAST_NODE_L1_XID_VALID=[False], MULTICAST_NODE_L1_XID=[0])
 
 print(f"  mgid 1 -> {all_ports}")
+
 IN.net.arp_table.add_with_arp_resolve(
     dst_proto_addr=IPAddress(SWITCH['ip']), mac=EUI(SWITCH['mac']))
 
