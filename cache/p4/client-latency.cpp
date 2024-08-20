@@ -231,13 +231,15 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   //   }
   // }
 
-  auto tStart2 = std::chrono::high_resolution_clock::now();
 
   // Uncomment this when using small -m for latency measurements
   for (auto i = 0; i < keys.size(); ++i) {
     sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
            sizeof(server));
   }
+
+  auto tStart2 = std::chrono::high_resolution_clock::now();
+
   for (auto i = 0; i < keys.size(); ++i) {
     recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   }
