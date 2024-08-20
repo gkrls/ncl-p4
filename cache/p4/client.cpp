@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
                             sigstart);
       }
       std::cout << "info: starting " << opt.Threads << " client threads\n";
-      // start.set_value();
+      start.set_value();
       for (auto &t : threads)
         if (t.joinable())
           t.join();
