@@ -139,124 +139,125 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data.txt")) 
 
     print(f"\nWill insert {CACHE}% of keys in data.txt ({num_in_cache} keys) in the cache!!\n")
 
-    for (i, l) in enumerate(lines):
-        if i == num_in_cache:
-            break
-        kv = l.strip().split('=', 1)
-        cache_entries[kv[0]] = kv[1]
+    if num_in_cache > 0:
+        for (i, l) in enumerate(lines):
+            if i == num_in_cache:
+                break
+            kv = l.strip().split('=', 1)
+            cache_entries[kv[0]] = kv[1]
 
-print("Inserting cache entries:")
-for i, (k, v) in enumerate(cache_entries.items()):
-    k_enc = encode_str_key(k)
-    val_bytes = len(bytes(v, 'utf-8'))
-    val_words = len(bytes(v, 'utf-8')) // 4 + \
-        (1 if len(bytes(v, 'utf-8')) % 4 > 0 else 0)
-    slot = 1
-    mask = (1 << val_words) - 1
+        print("Inserting cache entries:")
+        for i, (k, v) in enumerate(cache_entries.items()):
+            k_enc = encode_str_key(k)
+            val_bytes = len(bytes(v, 'utf-8'))
+            val_words = len(bytes(v, 'utf-8')) // 4 + \
+                (1 if len(bytes(v, 'utf-8')) % 4 > 0 else 0)
+            slot = 1
+            mask = (1 << val_words) - 1
 
-    NCVM.mem.managed.lut.Index.add_with__mem_lut_Index_Read(H_ncp_data_1_00_value=k_enc, value=i)
-    NCVM.mem.managed.lut.Bitmap.add_with__mem_lut_Bitmap_Read(H_ncp_data_1_00_value=k_enc, value=mask)
-    NCVM.mem.managed.Valid0.add(REGISTER_INDEX=i, f1=1);
-    NCVM.mem.managed.Valid1.add(REGISTER_INDEX=i, f1=0);
+            NCVM.mem.managed.lut.Index.add_with__mem_lut_Index_Read(H_ncp_data_1_00_value=k_enc, value=i)
+            NCVM.mem.managed.lut.Bitmap.add_with__mem_lut_Bitmap_Read(H_ncp_data_1_00_value=k_enc, value=mask)
+            NCVM.mem.managed.Valid0.add(REGISTER_INDEX=i, f1=1);
+            NCVM.mem.managed.Valid1.add(REGISTER_INDEX=i, f1=0);
 
-    val = bytes(v, 'utf-8')
+            val = bytes(v, 'utf-8')
 
-    if is_bit_set(mask, 0):
-        if is_bit_set(mask, 0):
-            NCVM.mem.net.Cache_fragment_0_.add(REGISTER_INDEX=i, f1=int.from_bytes(
-                val[0:4], byteorder='little'))
-        if is_bit_set(mask, 1):
-            NCVM.mem.net.Cache_fragment_1_.add(REGISTER_INDEX=i, f1=int.from_bytes(
-                val[4:8], byteorder='little'))
-        if is_bit_set(mask, 2):
-            NCVM.mem.net.Cache_fragment_2_.add(REGISTER_INDEX=i, f1=int.from_bytes(
-                val[8:12], byteorder='little'))
-        if is_bit_set(mask, 3):
-            NCVM.mem.net.Cache_fragment_3_.add(REGISTER_INDEX=i, f1=int.from_bytes(
-                val[12:16], byteorder='little'))
+            if is_bit_set(mask, 0):
+                if is_bit_set(mask, 0):
+                    NCVM.mem.net.Cache_fragment_0_.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                        val[0:4], byteorder='little'))
+                if is_bit_set(mask, 1):
+                    NCVM.mem.net.Cache_fragment_1_.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                        val[4:8], byteorder='little'))
+                if is_bit_set(mask, 2):
+                    NCVM.mem.net.Cache_fragment_2_.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                        val[8:12], byteorder='little'))
+                if is_bit_set(mask, 3):
+                    NCVM.mem.net.Cache_fragment_3_.add(REGISTER_INDEX=i, f1=int.from_bytes(
+                        val[12:16], byteorder='little'))
 
-    print(
-        f"  key: 0x{k_enc:016x}/{k_enc} --> cacheline: {i} | slot: {slot}, mask: {mask:032b} / {val_bytes:2d}B,{val_words}W | raw: {k} -> {v}")
-
-
-bfrt.complete_operations()
-
-print()
-print("================================")
-print("CACHE INFO SANITY CHECK")
-print("================================")
-
-print("Cachelines:")
-for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    print(f"  0x{int(e.key[b'H.ncp_data_1_0$0.value']):016x} --> cacheline: {e.data[b'value']}")
-print("Masks:")
-for e in NCVM.mem.managed.lut.Bitmap.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    print(
-        f"  0x{int(e.key[b'H.ncp_data_1_0$0.value']):016x} -->      mask: {e.data[b'value']:032b}, slot: {1 if is_bit_set(e.data[b'value'], 0) else 2}")
-print("Valid:")
-for i in range(len(cache_entries)):
-    e0 = NCVM.mem.managed.Valid0.get(REGISTER_INDEX=i, return_ents=True, print_ents=False, from_hw=True)
-    e1 = NCVM.mem.managed.Valid1.get(REGISTER_INDEX=i, return_ents=True, print_ents=False, from_hw=True)
-
-    print(
-        f"  cacheline: {i} --> valid1: {e1.data[b'ncvm.mem.managed.Valid1.f1']} valid0: {e0.data[b'ncvm.mem.managed.Valid0.f1']}")
-print("Values:")
-
-index_entries = NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True)
-if len(index_entries) < 6: # if we have space in the terminal
-    print("       ", end='')
-    for e in index_entries: #NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-        print(f"     l:{e.data[b'value']:05d}", end='')
-    print()
-print("  Cache1: ", end='')
-for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'value']
-    print(f"  0x{NCVM.mem.net.Cache_fragment_0_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_0_.f1'][0]:08x}",end='')
-print()
-print("  Cache2: ", end='')
-for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'value']
-    print(f"  0x{NCVM.mem.net.Cache_fragment_1_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_1_.f1'][0]:08x}",end='')
-print()
-print("  Cache3: ", end='')
-for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'value']
-    print(f"  0x{NCVM.mem.net.Cache_fragment_2_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_2_.f1'][0]:08x}",end='')
-print()
-print("  Cache4: ", end='')
-for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'value']
-    print(f"  0x{NCVM.mem.net.Cache_fragment_3_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_3_.f1'][0]:08x}",end='')
-print()
-
-print("Values reconstruct:")
-
-def combine_32bit_to_string(*integers):
-    # Convert each 32-bit integer to 4 bytes and concatenate them
-    combined_bytes = b''.join(i.to_bytes(4, byteorder='little') for i in integers)
-    # Convert the combined byte sequence to a string
-    return combined_bytes.decode('utf-8', errors='ignore')
-
-for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
-    idx = e.data[b'value']
-    # print()
-    key=e.key[b'H.ncp_data_1_0$0.value']
-    # Cache.mask.dump()
-    mask = NCVM.mem.managed.lut.Bitmap.get(key, return_ents=True, print_ents=False, from_hw=True).data[b'value']
-    # mask.dump()
-    # print("mask: ", mask[''])
-    value_bytes = []
-    if is_bit_set(mask, 0):
-        value_bytes.append(NCVM.mem.net.Cache_fragment_0_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_0_.f1'][0])
-    if is_bit_set(mask, 1):
-        value_bytes.append(NCVM.mem.net.Cache_fragment_1_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_1_.f1'][0])
-    if is_bit_set(mask, 2):
-        value_bytes.append(NCVM.mem.net.Cache_fragment_2_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_2_.f1'][0])
-    if is_bit_set(mask, 3):
-        value_bytes.append(NCVM.mem.net.Cache_fragment_3_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_3_.f1'][0])
-    print(f"  cacheline: {idx:05d}, mask: {mask:032b} --> {value_bytes} --> {combine_32bit_to_string(*value_bytes)}")
-
-# print("================================")
+            print(
+                f"  key: 0x{k_enc:016x}/{k_enc} --> cacheline: {i} | slot: {slot}, mask: {mask:032b} / {val_bytes:2d}B,{val_words}W | raw: {k} -> {v}")
 
 
-bfrt.complete_operations()
+        bfrt.complete_operations()
+
+        print()
+        print("================================")
+        print("CACHE INFO SANITY CHECK")
+        print("================================")
+
+        print("Cachelines:")
+        for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            print(f"  0x{int(e.key[b'H.ncp_data_1_0$0.value']):016x} --> cacheline: {e.data[b'value']}")
+        print("Masks:")
+        for e in NCVM.mem.managed.lut.Bitmap.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            print(
+                f"  0x{int(e.key[b'H.ncp_data_1_0$0.value']):016x} -->      mask: {e.data[b'value']:032b}, slot: {1 if is_bit_set(e.data[b'value'], 0) else 2}")
+        print("Valid:")
+        for i in range(len(cache_entries)):
+            e0 = NCVM.mem.managed.Valid0.get(REGISTER_INDEX=i, return_ents=True, print_ents=False, from_hw=True)
+            e1 = NCVM.mem.managed.Valid1.get(REGISTER_INDEX=i, return_ents=True, print_ents=False, from_hw=True)
+
+            print(
+                f"  cacheline: {i} --> valid1: {e1.data[b'ncvm.mem.managed.Valid1.f1']} valid0: {e0.data[b'ncvm.mem.managed.Valid0.f1']}")
+        print("Values:")
+
+        index_entries = NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True)
+        if len(index_entries) < 6: # if we have space in the terminal
+            print("       ", end='')
+            for e in index_entries: #NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+                print(f"     l:{e.data[b'value']:05d}", end='')
+            print()
+        print("  Cache1: ", end='')
+        for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            idx = e.data[b'value']
+            print(f"  0x{NCVM.mem.net.Cache_fragment_0_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_0_.f1'][0]:08x}",end='')
+        print()
+        print("  Cache2: ", end='')
+        for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            idx = e.data[b'value']
+            print(f"  0x{NCVM.mem.net.Cache_fragment_1_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_1_.f1'][0]:08x}",end='')
+        print()
+        print("  Cache3: ", end='')
+        for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            idx = e.data[b'value']
+            print(f"  0x{NCVM.mem.net.Cache_fragment_2_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_2_.f1'][0]:08x}",end='')
+        print()
+        print("  Cache4: ", end='')
+        for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            idx = e.data[b'value']
+            print(f"  0x{NCVM.mem.net.Cache_fragment_3_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_3_.f1'][0]:08x}",end='')
+        print()
+
+        print("Values reconstruct:")
+
+        def combine_32bit_to_string(*integers):
+            # Convert each 32-bit integer to 4 bytes and concatenate them
+            combined_bytes = b''.join(i.to_bytes(4, byteorder='little') for i in integers)
+            # Convert the combined byte sequence to a string
+            return combined_bytes.decode('utf-8', errors='ignore')
+
+        for e in NCVM.mem.managed.lut.Index.get(regex=True, return_ents=True, print_ents=False, from_hw=True):
+            idx = e.data[b'value']
+            # print()
+            key=e.key[b'H.ncp_data_1_0$0.value']
+            # Cache.mask.dump()
+            mask = NCVM.mem.managed.lut.Bitmap.get(key, return_ents=True, print_ents=False, from_hw=True).data[b'value']
+            # mask.dump()
+            # print("mask: ", mask[''])
+            value_bytes = []
+            if is_bit_set(mask, 0):
+                value_bytes.append(NCVM.mem.net.Cache_fragment_0_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_0_.f1'][0])
+            if is_bit_set(mask, 1):
+                value_bytes.append(NCVM.mem.net.Cache_fragment_1_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_1_.f1'][0])
+            if is_bit_set(mask, 2):
+                value_bytes.append(NCVM.mem.net.Cache_fragment_2_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_2_.f1'][0])
+            if is_bit_set(mask, 3):
+                value_bytes.append(NCVM.mem.net.Cache_fragment_3_.get(REGISTER_INDEX=idx, return_ents=True, print_ents=False, from_hw=True).data[b'ncvm.mem.net.Cache_fragment_3_.f1'][0])
+            print(f"  cacheline: {idx:05d}, mask: {mask:032b} --> {value_bytes} --> {combine_32bit_to_string(*value_bytes)}")
+
+        # print("================================")
+
+
+        bfrt.complete_operations()
