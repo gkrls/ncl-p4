@@ -219,13 +219,13 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   std::vector<uint64_t> times(keys.size());
 
   // Send the packets
-  for (auto m = 0; m < opt.Multiplier; ++m) {
-    for (auto i = 0; i < keys.size(); ++i) {
-      sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
-             sizeof(server));
-      recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
-    }
+  // for (auto m = 0; m < opt.Multiplier; ++m) {
+  for (auto i = 0; i < keys.size(); ++i) {
+    sendto(soc, &ps[i], CACHE_HEADER_SIZE, 0, (sockaddr *)&server,
+            sizeof(server));
+    recvfrom(soc, &q, CACHE_HEADER_SIZE, 0, (sockaddr *)&incaddrr, &inclen);
   }
+  // }
 
   auto tStart2 = std::chrono::high_resolution_clock::now();
 
@@ -323,22 +323,23 @@ int main(int argc, char **argv) {
 
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
+    std::vector<std::vector<uint64_t>> threadKeys(opt.Threads);
 
+    for (size_t i = 0; i < opt.Threads; ++i) {
+      threadKeys[i].reserve(keys.size() * opt.Multiplier);
+
+      std::default_random_engine rng(opt.Seed + i);
+      for (auto j = 0; j < opt.Multiplier; ++j) {
+        std::shuffle(keys.begin(), keys.end(), rng);
+        threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
+      }
+    }
 
     if (opt.Threads == 1) {
       std::cout << "info: starting " << opt.Threads << " client threads\n";
-      client(0, opt.ServerIp, opt.ServerPort, keys, results[0], sigstart);
+      client(0, opt.ServerIp, opt.ServerPort, threadKeys[0], results[0], sigstart);
     } else {
-      std::vector<std::vector<uint64_t>> threadKeys(opt.Threads);
 
-      for (size_t i = 0; i < opt.Threads; ++i) {
-        threadKeys[i].reserve(keys.size() * opt.Multiplier);
-        std::default_random_engine rng(opt.Seed + i);
-        for (auto j = 0; j < opt.Multiplier; ++j) {
-          std::shuffle(keys.begin(), keys.end(), rng);
-          threadKeys[i].insert(threadKeys[i].end(), keys.begin(), keys.end());
-        }
-      }
 
       std::vector<std::thread> threads;
       for (auto tid = 0; tid < opt.Threads; ++tid) {
@@ -348,7 +349,7 @@ int main(int argc, char **argv) {
                             sigstart);
       }
       std::cout << "info: starting " << opt.Threads << " client threads\n";
-      start.set_value();
+      // start.set_value();
       for (auto &t : threads)
         if (t.joinable())
           t.join();
