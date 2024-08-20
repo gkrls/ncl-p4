@@ -280,7 +280,7 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   stats.duration2 =
       std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart2)
           .count();
-  stats.queries = keys.size() * opt.Multiplier;
+  stats.queries = keys.size();
 }
 
 void loadKeys(const char *f, std::vector<uint64_t> &keys) {
@@ -316,10 +316,7 @@ int main(int argc, char **argv) {
     std::string dataTxt = GetExecutableDir().append("/data.txt");
     loadKeys(dataTxt.c_str(), keys);
 
-
     std::vector<statistics> results(opt.Threads);
-
-
 
     std::promise<void> start;
     std::shared_future<void> sigstart = start.get_future().share();
