@@ -225,9 +225,13 @@ void client(uint32_t tid, std::string serverAddr, uint16_t serverPort,
   socklen_t inclen = sizeof(sockaddr_in);
   ncl_h p, q;
 
-  std::vector<cache_h> ps(keys.size());
+  std::vector<ncl_h> ps(keys.size());
   for (auto i = 0; i < keys.size(); ++i) {
-    createGetRequest(ps[i], keys[i]);
+    ps[i].ncp.cid = 1;
+    ps[i].ncp.d_dst = 1;
+    ps[i].ncp.h_src = opt.NclID;
+    ps[i].ncp.h_dst = 4;
+    createGetRequest(ps[i].cache, keys[i]);
   }
 
   uint32_t latency = 0;
