@@ -238,7 +238,7 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   // Burst tx opt.Window message
   // std::cout << "sending...\n";
-  sendmmsg(soc, msg, opt.Window, 0);
+  sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
 
   size_t totalReceived = 0;
 
@@ -280,11 +280,11 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
       iov[i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-      sendmsg(soc, &msg[i].msg_hdr, 0); // one by one
+      sendmsg(soc, &msg[i].msg_hdr, MSG_ZEROCOPY); // one by one
 #endif
     }
 #ifdef RX_BURST
-    sendmmsg(soc, msg, received, 0); // burst //MSG_ZEROCOPY
+    sendmmsg(soc, msg, received, MSG_ZEROCOPY); // burst //MSG_ZEROCOPY
 #endif
   }
 }
@@ -344,7 +344,7 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   int reuse = 1;
   int zero_copy = 1;
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-  // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
+  setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
 
   if (bind(soc, (sockaddr *)&worker_addr, sizeof(sockaddr)) < 0) {
     worker() << "error: failed to bind socket to " << opt.IP << "."

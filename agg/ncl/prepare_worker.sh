@@ -21,6 +21,7 @@ if [ "$1" == "kill" ]; then
         echo "Deleted filter ID: $id"
     done
     sudo ethtool -K ens4f0 ntuple off
+    echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
     exit 0
 fi
 
