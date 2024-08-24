@@ -181,6 +181,11 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             std::shared_future<void> sigstart) {
   sigstart.wait();
 
+  sockaddr_in device;
+  device.sin_family = AF_INET;
+  device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
+  device.sin_port = htons(opt.DevicePort);
+
   if (opt.Pin)
     pin_thread_to_core(tid);
 
@@ -410,7 +415,7 @@ int main(int argc, char **argv) {
   uint64_t latency = 0;
   double throughput = 0;
   for (auto s = 0; s < opt.Steps; ++s) {
-    auto us = AllReduce(s + 1, windows, versions, &expo, data, opt.Size);
+    auto us = AllReduce(s + 1, soc, windows, versions, &expo, data, opt.Size);
     if (!us)
       return 1;
 
