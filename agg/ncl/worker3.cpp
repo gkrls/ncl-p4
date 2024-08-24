@@ -318,11 +318,11 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
       iov[i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-      sendmsg(soc, &msg[i].msg_hdr, MSG_ZEROCOPY); // one by one
+      sendmsg(soc, &msg[i].msg_hdr, 0); // one by one
 #endif
     }
 #ifdef RX_BURST
-    sendmmsg(soc, msg, received, MSG_ZEROCOPY); // burst
+    sendmmsg(soc, msg, received, 0); // burst //MSG_ZEROCOPY
 #endif
   }
 }
