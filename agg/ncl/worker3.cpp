@@ -374,8 +374,10 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             perror("recvmmsg failed");
             break;
         }
-        if (received == 0)
+        if (received == 0) {
             continue;
+          std::cout << "received 0!\n";
+        }
 
         totalReceived += received;
         if (totalReceived >= opt.PacketsPerThread) {
