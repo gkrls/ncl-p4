@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <arpa/inet.h> // For inet_addr
+#include <asm-generic/socket.h>
 #include <bits/types/struct_iovec.h>
 #include <bits/types/struct_timespec.h>
 #include <chrono>
@@ -360,7 +361,7 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   }
 
   // Send data using MSG_ZEROCOPY
-  int ret = sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
+  int ret = sendmmsg(soc, msg, opt.Window, 0);
   if (ret == -1) {
     perror("sendmmsg failed");
   }
@@ -369,18 +370,18 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
   while (true) {
-      std::cout << "recvmmsg " << totalReceived << "...\n";
+      // std::cout << "recvmmsg " << totalReceived << "...\n";
       int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
-      if (received == -1) {
-          perror("recvmmsg failed");
-          break;
-      }
-      if (received == 0) {
-          continue;
-        std::cout << "received 0!\n";
-      } else {
-        std::cout << "received " << received << '\n';
-      }
+      // if (received == -1) {
+      //     perror("recvmmsg failed");
+      //     break;
+      // }
+      // if (received == 0) {
+      //     continue;
+      //   std::cout << "received 0!\n";
+      // } else {
+      //   std::cout << "received " << received << '\n';
+      // }
 
       totalReceived += received;
       if (totalReceived >= opt.PacketsPerThread) {
@@ -404,13 +405,13 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
           iov[i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-      if (sendmsg(soc, &msg[i].msg_hdr, MSG_ZEROCOPY) == -1) {
+      if (sendmsg(soc, &msg[i].msg_hdr, 0) == -1) {
           perror("sendmsg2 failed");
       }
 #endif
     }
 #ifdef RX_BURST
-    if (sendmmsg(soc, msg, received, MSG_ZEROCOPY) == -1) {
+    if (sendmmsg(soc, msg, received, 0) == -1) {
         perror("sendmmsg3 failed");
     }
 #endif
@@ -475,9 +476,13 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   int reuse = 1;
   int zero_copy = 1;
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-  setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
-  int sndbuf_size = 128 * 1024 * 1024; // 4MB
+  // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
+  int sndbuf_size = 64 * 1024 * 1024; // 4MB
+  int rcvbuf_size = 64 * 1024 * 1024; // 4MB
   if (setsockopt(soc, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size)) < 0) {
+      perror("setsockopt SO_SNDBUF failed");
+  }
+  if (setsockopt(soc, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) < 0) {
       perror("setsockopt SO_SNDBUF failed");
   }
   if (bind(soc, (sockaddr *)&worker_addr, sizeof(sockaddr)) < 0) {
