@@ -180,6 +180,13 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
                              sockaddr_in &device_addr) {
   auto soc = socket(AF_INET, SOCK_DGRAM, 0);
 
+  worker_addr.sin_family = AF_INET;
+  worker_addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
+  worker_addr.sin_port = htons(opt.Port + tid);
+  device_addr.sin_family = AF_INET;
+  device_addr.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
+  device_addr.sin_port = htons(opt.DevicePort);
+
   if (opt.Bind) {
     const char *iface = "ens4f0"; // Replace with your network interface name
     struct ifreq ifr;
@@ -194,9 +201,6 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
 
-  worker_addr.sin_family = AF_INET;
-  worker_addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
-  worker_addr.sin_port = htons(opt.Port + tid);
   if (bind(soc, (sockaddr *)&worker_addr, sizeof(sockaddr)) < 0) {
     worker() << "error: failed to bind socket to " << opt.IP << "."
              << ntohs(worker_addr.sin_port) << '\n';
@@ -204,9 +208,6 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   }
 
   if (opt.Connect) {
-    device_addr.sin_family = AF_INET;
-    device_addr.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
-    device_addr.sin_port = htons(opt.DevicePort);
     if (connect(soc, (struct sockaddr *)&device_addr, sizeof(device_addr)) <
         0) {
       worker() << "failed to connect UDP socket to device\n";
@@ -224,6 +225,9 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   sigstart.wait();
 
   sockaddr_in addr, device;
+  std::memset(&addr, 0, sizeof(sockaddr_in));
+  std::memset(&device, 0, sizeof(sockaddr_in));
+
   int soc = create_socket_for_worker(tid, addr, device);
   if (opt.Pin)
     pin_thread_to_core(tid);
@@ -285,6 +289,7 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   while (true) {
     // receive burst of opt.Rx messages
+    std::cout << "receiving...\n";
     int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
     if (received == 0)
       continue;

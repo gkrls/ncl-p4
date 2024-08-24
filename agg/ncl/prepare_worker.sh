@@ -9,7 +9,7 @@ BASE_PORT=4242
 WORKER_IP=$1
 
 # Path to the server executable
-CLIENT_EXECUTABLE="./worker2"
+CLIENT_EXECUTABLE="./worker3"
 
 if [ "$1" == "kill" ]; then
     pkill -f $CLIENT_EXECUTABLE
