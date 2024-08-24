@@ -176,59 +176,11 @@ void pin_thread_to_core(int core_id) {
   pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 }
 
-int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
-                             sockaddr_in &device_addr) {
-  auto soc = socket(AF_INET, SOCK_DGRAM, 0);
-
-  worker_addr.sin_family = AF_INET;
-  worker_addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
-  worker_addr.sin_port = htons(opt.Port + tid);
-  device_addr.sin_family = AF_INET;
-  device_addr.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
-  device_addr.sin_port = htons(opt.DevicePort);
-
-  if (opt.Bind) {
-    const char *iface = "ens4f0"; // Replace with your network interface name
-    struct ifreq ifr;
-    memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
-    setsockopt(soc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr));
-  }
-
-
-  int reuse = 1;
-  int zero_copy = 1;
-  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-  // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
-
-  if (bind(soc, (sockaddr *)&worker_addr, sizeof(sockaddr)) < 0) {
-    worker() << "error: failed to bind socket to " << opt.IP << "."
-             << ntohs(worker_addr.sin_port) << '\n';
-    return 0;
-  }
-
-  if (opt.Connect) {
-    if (connect(soc, (struct sockaddr *)&device_addr, sizeof(device_addr)) <
-        0) {
-      worker() << "failed to connect UDP socket to device\n";
-      // close(soc);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  return soc;
-}
-
-void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
+void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             uint32_t *expo, uint32_t *data, size_t size,
             std::shared_future<void> sigstart) {
   sigstart.wait();
 
-  sockaddr_in addr, device;
-  std::memset(&addr, 0, sizeof(sockaddr_in));
-  std::memset(&device, 0, sizeof(sockaddr_in));
-
-  int soc = create_socket_for_worker(tid, addr, device);
   if (opt.Pin)
     pin_thread_to_core(tid);
 
@@ -332,7 +284,7 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   }
 }
 
-uint64_t AllReduce(uint32_t s, ncrt::ncl_h *windows, uint8_t *versions,
+uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows, uint8_t *versions,
                    uint32_t *expo, uint32_t *data, size_t size) {
   if (!opt.Perf) {
     worker() << '\n';
@@ -346,7 +298,7 @@ uint64_t AllReduce(uint32_t s, ncrt::ncl_h *windows, uint8_t *versions,
   std::promise<void> start;
   auto sigstart = start.get_future().share();
   for (auto tid = 0; tid < opt.Threads; ++tid)
-    threads.emplace_back(Worker, tid, &windows[tid * opt.Window],
+    threads.emplace_back(Worker, tid, sockets[tid], &windows[tid * opt.Window],
                          &versions[tid], expo, data, size, sigstart);
 
   // Start the threads
@@ -363,6 +315,50 @@ uint64_t AllReduce(uint32_t s, ncrt::ncl_h *windows, uint8_t *versions,
       .count();
 }
 
+
+int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
+                             sockaddr_in &device_addr) {
+  auto soc = socket(AF_INET, SOCK_DGRAM, 0);
+
+  worker_addr.sin_family = AF_INET;
+  worker_addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
+  worker_addr.sin_port = htons(opt.Port + tid);
+  device_addr.sin_family = AF_INET;
+  device_addr.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
+  device_addr.sin_port = htons(opt.DevicePort);
+
+  if (opt.Bind) {
+    const char *iface = "ens4f0"; // Replace with your network interface name
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+    setsockopt(soc, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr));
+  }
+
+
+  int reuse = 1;
+  int zero_copy = 1;
+  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
+  // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
+
+  if (bind(soc, (sockaddr *)&worker_addr, sizeof(sockaddr)) < 0) {
+    worker() << "error: failed to bind socket to " << opt.IP << "."
+             << ntohs(worker_addr.sin_port) << '\n';
+    return 0;
+  }
+
+  if (opt.Connect) {
+    if (connect(soc, (struct sockaddr *)&device_addr, sizeof(device_addr)) <
+        0) {
+      worker() << "failed to connect UDP socket to device\n";
+      // close(soc);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  return soc;
+}
+
 int main(int argc, char **argv) {
   opt.parse(argc, argv);
 
@@ -376,15 +372,12 @@ int main(int argc, char **argv) {
   memset(versions, 0, opt.Slots);
 
   // Create sockets
+  sockaddr_in device_addr, worker_addr[opt.Threads];
+  std::memset(worker_addr, 0, sizeof(sockaddr_in) * opt.Threads);
   int soc[opt.Threads];
-  sockaddr_in addr[opt.Threads];
-  std::memset(soc, 0, sizeof(int));
-  std::memset(addr, 0, sizeof(sockaddr_in));
-
-  sockaddr_in device;
-  device.sin_family = AF_INET;
-  device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
-  device.sin_port = htons(opt.DevicePort);
+  for (auto i = 0; i < opt.Threads; ++i) {
+    soc[i] = create_socket_for_worker(i, worker_addr[i], device_addr);
+  }
 
   const char *interface_name =
       "ens4f0"; // Replace with your network interface name
@@ -408,7 +401,7 @@ int main(int argc, char **argv) {
 
   for (auto ws = 0; ws < opt.Warmup; ++ws) {
     worker() << "Running warmup step " << ws << " ...\n";
-    AllReduce(ws + 1, windows, versions, &expo, data, opt.Size);
+    AllReduce(ws + 1, soc, windows, versions, &expo, data, opt.Size);
   }
 
   if (opt.Warmup)
@@ -443,9 +436,11 @@ int main(int argc, char **argv) {
              << gbps << " Gbps" << std::endl;
   }
 
-  // Free memory
+  // Cleanup
   free(versions);
   free(windows);
+  for (auto i = 0; i < opt.Threads; ++i)
+    close(soc[i]);
   // // Destroy the sockets
   // for (auto i = 0; i < opt.Threads; ++i)
   //   close(soc[i]);
