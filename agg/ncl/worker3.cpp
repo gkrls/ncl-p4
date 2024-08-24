@@ -297,127 +297,128 @@ void Worker2(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             uint32_t *expo, uint32_t *data, size_t size,
             std::shared_future<void> sigstart) {
-    sigstart.wait();
+  sigstart.wait();
 
-    sockaddr_in device;
-    device.sin_family = AF_INET;
-    device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
-    device.sin_port = htons(opt.DevicePort);
+  sockaddr_in device;
+  device.sin_family = AF_INET;
+  device.sin_addr.s_addr = inet_addr(opt.DeviceIp.c_str());
+  device.sin_port = htons(opt.DevicePort);
 
-    if (opt.Pin)
-        pin_thread_to_core(tid);
+  if (opt.Pin)
+      pin_thread_to_core(tid);
 
-    uint32_t start, end;
-    getIndexRangeForThread(tid, start, end);
+  uint32_t start, end;
+  getIndexRangeForThread(tid, start, end);
 
-    uint32_t mask = 1 << (opt.Rank - 1);
-    uint16_t baseSlot = tid * opt.Window;
-    uint8_t version = *startingVersion;
-    uint8_t startingAggIdxOffset = version * opt.Slots;
+  uint32_t mask = 1 << (opt.Rank - 1);
+  uint16_t baseSlot = tid * opt.Window;
+  uint8_t version = *startingVersion;
+  uint8_t startingAggIdxOffset = version * opt.Slots;
 
-    auto *ncl = static_cast<ncrt::ncl_h *>(malloc(opt.Window * sizeof(ncrt::ncl_h)));
-    auto *iov = static_cast<iovec *>(malloc(2 * opt.Window * sizeof(iovec)));
-    auto *msg = static_cast<mmsghdr *>(malloc(opt.Window * sizeof(mmsghdr)));
+  auto *ncl = static_cast<ncrt::ncl_h *>(malloc(opt.Window * sizeof(ncrt::ncl_h)));
+  auto *iov = static_cast<iovec *>(malloc(2 * opt.Window * sizeof(iovec)));
+  auto *msg = static_cast<mmsghdr *>(malloc(opt.Window * sizeof(mmsghdr)));
 
-    if (!ncl || !iov || !msg) {
-        perror("Failed to allocate memory");
-        exit(EXIT_FAILURE);
-    }
+  if (!ncl || !iov || !msg) {
+      perror("Failed to allocate memory");
+      exit(EXIT_FAILURE);
+  }
 
-    memset(ncl, 0, sizeof(ncrt::ncl_h) * opt.Window);
-    memset(iov, 0, 2 * opt.Window * sizeof(iovec));
-    memset(msg, 0, opt.Window * sizeof(mmsghdr));
+  memset(ncl, 0, sizeof(ncrt::ncl_h) * opt.Window);
+  memset(iov, 0, 2 * opt.Window * sizeof(iovec));
+  memset(msg, 0, opt.Window * sizeof(mmsghdr));
 
-    uint32_t offset = start;
-    auto dataLen = opt.ValuesPerPacket * sizeof(uint32_t);
+  uint32_t offset = start;
+  auto dataLen = opt.ValuesPerPacket * sizeof(uint32_t);
 
-    for (auto i = 0, v = 0; i < opt.Window; ++i, v += 2) {
-        ncl[i].ncp.h_src = opt.Rank;
-        ncl[i].ncp.d_dst = 1;
-        ncl[i].ncp.cid = 1;
+  for (auto i = 0, v = 0; i < opt.Window; ++i, v += 2) {
+    ncl[i].ncp.h_src = opt.Rank;
+    ncl[i].ncp.d_dst = 1;
+    ncl[i].ncp.cid = 1;
 
-        ncl[i].agg.ver = version;
-        ncl[i].agg.bmp_idx = htons(baseSlot + i);
-        ncl[i].agg.agg_idx = htons(baseSlot + i + startingAggIdxOffset);
-        ncl[i].agg.mask = htonl(mask);
-        ncl[i].agg.offset = htonl(offset);
-        ncl[i].agg.expo = htonl(*expo);
+    ncl[i].agg.ver = version;
+    ncl[i].agg.bmp_idx = htons(baseSlot + i);
+    ncl[i].agg.agg_idx = htons(baseSlot + i + startingAggIdxOffset);
+    ncl[i].agg.mask = htonl(mask);
+    ncl[i].agg.offset = htonl(offset);
+    ncl[i].agg.expo = htonl(*expo);
 
-        iov[v].iov_base = &ncl[i];
-        iov[v].iov_len = sizeof(ncrt::ncl_h);
-        iov[v + 1].iov_base = &data[offset];
-        iov[v + 1].iov_len = dataLen;
+    iov[v].iov_base = &ncl[i];
+    iov[v].iov_len = sizeof(ncrt::ncl_h);
+    iov[v + 1].iov_base = &data[offset];
+    iov[v + 1].iov_len = dataLen;
 
-        msg[i].msg_hdr.msg_name = &device;
-        msg[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
-        msg[i].msg_hdr.msg_iov = &iov[v];
-        msg[i].msg_hdr.msg_iovlen = 2;
-        msg[i].msg_hdr.msg_control = nullptr;
-        msg[i].msg_hdr.msg_controllen = 0;
-        msg[i].msg_hdr.msg_flags = 0;
+    msg[i].msg_hdr.msg_name = &device;
+    msg[i].msg_hdr.msg_namelen = sizeof(sockaddr_in);
+    msg[i].msg_hdr.msg_iov = &iov[v];
+    msg[i].msg_hdr.msg_iovlen = 2;
+    msg[i].msg_hdr.msg_control = nullptr;
+    msg[i].msg_hdr.msg_controllen = 0;
+    msg[i].msg_hdr.msg_flags = 0;
 
-        offset += opt.ValuesPerPacket;
-    }
+    offset += opt.ValuesPerPacket;
+  }
 
-    // Send data using MSG_ZEROCOPY
-    int ret = sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
-    if (ret == -1) {
-        perror("sendmmsg failed");
-    }
+  // Send data using MSG_ZEROCOPY
+  int ret = sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
+  if (ret == -1) {
+    perror("sendmmsg failed");
+  }
 
-    size_t totalReceived = 0;
-    uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
+  size_t totalReceived = 0;
+  uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
-    while (true) {
-        int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
-        if (received == -1) {
-            perror("recvmmsg failed");
-            break;
-        }
-        if (received == 0) {
-            continue;
-          std::cout << "received 0!\n";
-        } else {
-          std::cout << "received " << received << '\n';
-        }
+  while (true) {
+      std::cout << "recvmmsg " << totalReceived << "...\n";
+      int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
+      if (received == -1) {
+          perror("recvmmsg failed");
+          break;
+      }
+      if (received == 0) {
+          continue;
+        std::cout << "received 0!\n";
+      } else {
+        std::cout << "received " << received << '\n';
+      }
 
-        totalReceived += received;
-        if (totalReceived >= opt.PacketsPerThread) {
-            *startingVersion = 1 - version;
-            break;
-        }
+      totalReceived += received;
+      if (totalReceived >= opt.PacketsPerThread) {
+          *startingVersion = 1 - version;
+          break;
+      }
 
-        for (auto i = 0; i < received; ++i) {
-            auto *ih = (ncrt::ncl_h *)iov[i * 2].iov_base;
+      for (auto i = 0; i < received; ++i) {
+          auto *ih = (ncrt::ncl_h *)iov[i * 2].iov_base;
 
-            version = 1 - ih->agg.ver;
-            offset = ntohl(ih->agg.offset) + offsetBy;
+          version = 1 - ih->agg.ver;
+          offset = ntohl(ih->agg.offset) + offsetBy;
 
-            ih->agg.ver = version;
-            ih->agg.agg_idx = htons(version ? ntohs(ih->agg.agg_idx) + opt.Slots
-                                            : ntohs(ih->agg.agg_idx) - opt.Slots);
-            ih->agg.mask = htonl(mask);
-            ih->agg.offset = htonl(offset);
-            ih->agg.expo = htonl(*expo);
+          ih->agg.ver = version;
+          ih->agg.agg_idx = htons(version ? ntohs(ih->agg.agg_idx) + opt.Slots
+                                          : ntohs(ih->agg.agg_idx) - opt.Slots);
+          ih->agg.mask = htonl(mask);
+          ih->agg.offset = htonl(offset);
+          ih->agg.expo = htonl(*expo);
 
-            iov[i * 2 + 1].iov_base = &data[offset];
+          iov[i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-            if (sendmsg(soc, &msg[i].msg_hdr, MSG_ZEROCOPY) == -1) {
-                perror("sendmsg2 failed");
-            }
-#endif
-        }
-#ifdef RX_BURST
-        if (sendmmsg(soc, msg, received, MSG_ZEROCOPY) == -1) {
-            perror("sendmmsg3 failed");
-        }
+      if (sendmsg(soc, &msg[i].msg_hdr, MSG_ZEROCOPY) == -1) {
+          perror("sendmsg2 failed");
+      }
 #endif
     }
+#ifdef RX_BURST
+    if (sendmmsg(soc, msg, received, MSG_ZEROCOPY) == -1) {
+        perror("sendmmsg3 failed");
+    }
+#endif
+  }
 
-    free(ncl);
-    free(iov);
-    free(msg);
+  free(ncl);
+  free(iov);
+  free(msg);
 }
 
 uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows, uint8_t *versions,
