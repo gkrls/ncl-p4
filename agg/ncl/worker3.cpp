@@ -405,21 +405,15 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
           iov[i * 2 + 1].iov_base = &data[offset];
 
 #ifndef RX_BURST
-      if (sendmsg(soc, &msg[i].msg_hdr, 0) == -1) {
-          perror("sendmsg2 failed");
-      }
+      if (sendmsg(soc, &msg[i].msg_hdr, 0) == -1)
+        perror("sendmsg2 failed");
 #endif
     }
 #ifdef RX_BURST
-    if (sendmmsg(soc, msg, received, 0) == -1) {
-        perror("sendmmsg3 failed");
-    }
+    if (sendmmsg(soc, msg, received, 0) == -1)
+      perror("sendmmsg3 failed");
 #endif
   }
-
-  free(ncl);
-  free(iov);
-  free(msg);
 }
 
 uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows, uint8_t *versions,
