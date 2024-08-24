@@ -148,73 +148,7 @@ bool GenerateVector(uint32_t **p, size_t size, uint32_t value) {
     for (auto i = 0; i < size; ++i)
       *(*p + i) = xorshift32();
   }
-  // virtualbox only supports AVX2
-  // } else if (opt.AVX512Available && opt.SIMD && size >= 16) {
-  //   __m512i vecval = _mm512_set1_epi32(value);
-  //   size_t i = 0;
-  //   for (; i + 16 <= size; i += 16)
-  //     _mm512_storeu_si512((__m512i *)(*p + i), vecval);
-  //   for (; i < size; ++i)
-  // *(*p + i) = value;
-  // } else if (opt.AVX2Available && opt.SIMD && size >= 8) {
-  //   __m256i vecval = _mm256_set1_epi32(value);
-  //   size_t i = 0;
-  //   for (; i + 8 <= size; i += 8)
-  //     _mm256_storeu_si256((__m256i *)(*p + i), vecval);
-  //   for (; i < size; ++i)
-  //     *(*p + i) = value;
-  // } else {
-  //   for (auto i = 0; i < size; ++i)
-  //     *(*p + i) = value;
-  // }
-  // virtualbox only supports AVX2
-  // if (opt.AVX512Available && opt.SIMD && size >= 32) {
-  //   // Just rng the first 32 and repeat
-  //   __m512i rngvec1 = _mm512_setr_epi32(
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32());
-  //   __m512i rngvec2 = _mm512_setr_epi32(
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32());
-  //   size_t i = 0;
-  //   for (; i + 32 <= size; i += 32) {
-  //     _mm512_storeu_si512((__m512i *)(*p + i), rngvec1);
-  //     _mm512_storeu_si512((__m512i *)(*p + i), rngvec2);
-  //   }
-  //   for (; i < size; ++i)
-  //     *(*p + i) = xorshift32();
-  // if (opt.AVX2Available && opt.SIMD && size >= 32) {
-  //   // Just rng the first 32 and repeat
-  //   __m256i rngvec1 = _mm256_setr_epi32(
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32());
-  //   __m256i rngvec2 = _mm256_setr_epi32(
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32());
-  //   __m256i rngvec3 = _mm256_setr_epi32(
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32());
-  //   __m256i rngvec4 = _mm256_setr_epi32(
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32(),
-  //       xorshift32(), xorshift32(), xorshift32(), xorshift32());
-  //   size_t i = 0;
-  //   for (; i + 32 <= size; i += 32) {
-  //     _mm256_storeu_si256((__m256i *)(*p + i), rngvec1);
-  //     _mm256_storeu_si256((__m256i *)(*p + i), rngvec2);
-  //     _mm256_storeu_si256((__m256i *)(*p + i), rngvec3);
-  //     _mm256_storeu_si256((__m256i *)(*p + i), rngvec4);
-  //   }
-  //   for (; i < size; ++i)
-  //     *(*p + i) = xorshift32();
-  // } else {
 
-  //   }
-  // }
-  // return true;
   return true;
 }
 
