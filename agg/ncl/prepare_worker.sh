@@ -33,7 +33,7 @@ for i in $(seq 0 $((N - 1))); do
     PORT=$((BASE_PORT + i))
 
     # Set up the n-tuple rule to direct traffic for this port to the RX queue corresponding to this core
-    sudo ethtool -U $INTERFACE flow-type udp4 dst-ip $CLIENT_IP dst-port $PORT action $i
+    sudo ethtool -U $INTERFACE flow-type udp4 dst-ip $WORKER_IP dst-port $PORT action $i
 
     # Start the server process, binding it to the specific core using taskset
     # taskset -c $i $CLIENT_EXECUTABLE --ip $CLIENT_IP --port $PORT -m $M --server-port $PORT > client.$i.txt &
