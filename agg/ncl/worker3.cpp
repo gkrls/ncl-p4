@@ -177,6 +177,7 @@ void pin_thread_to_core(int core_id) {
   pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 }
 
+
 void Worker2(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             uint32_t *expo, uint32_t *data, size_t size,
             std::shared_future<void> sigstart) {
@@ -291,6 +292,41 @@ void Worker2(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   }
 }
 
+void handle_error_queue(int soc) {
+    struct msghdr err_msg;
+    char err_buf[CMSG_SPACE(sizeof(struct sock_extended_err))];
+    struct iovec iov_err[1];
+    char dummy[1];
+
+    memset(&err_msg, 0, sizeof(err_msg));
+    iov_err[0].iov_base = dummy;
+    iov_err[0].iov_len = sizeof(dummy);
+    err_msg.msg_iov = iov_err;
+    err_msg.msg_iovlen = 1;
+    err_msg.msg_control = err_buf;
+    err_msg.msg_controllen = sizeof(err_buf);
+
+    while (true) {
+        int err_ret = recvmsg(soc, &err_msg, MSG_ERRQUEUE | MSG_DONTWAIT);
+        if (err_ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                break;
+            } else {
+                perror("recvmsg on MSG_ERRQUEUE failed");
+                break;
+            }
+        } else {
+            struct cmsghdr *cmsg = CMSG_FIRSTHDR(&err_msg);
+            if (cmsg && cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
+                struct sock_extended_err *serr = (struct sock_extended_err *)CMSG_DATA(cmsg);
+                if (serr->ee_origin == SO_EE_ORIGIN_ZEROCOPY) {
+                    std::cerr << "Zero-copy error: " << strerror(serr->ee_errno) << std::endl;
+                }
+            }
+        }
+    }
+}
+
 void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
             uint32_t *expo, uint32_t *data, size_t size,
             std::shared_future<void> sigstart) {
@@ -357,9 +393,26 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
     }
 
     // Send data using MSG_ZEROCOPY
-    int ret = sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
-    if (ret == -1) {
-        perror("sendmmsg failed");
+    // int ret = sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
+    // if (ret == -1) {
+    //     perror("sendmmsg failed");
+    // }
+
+    while (true) {
+        int ret = sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
+        if (ret == -1) {
+            if (errno == ENOBUFS) {
+                // Handle 'No buffer space available' error
+                std::cerr << "sendmmsg failed: No buffer space available, handling error queue...\n";
+                handle_error_queue(soc);
+                usleep(1000); // Sleep for a short while to allow resources to free up
+                continue;
+            } else {
+                perror("sendmmsg failed");
+                break;
+            }
+        }
+        break; // Successfully sent, break the loop
     }
 
     // Handle potential deferred errors from MSG_ZEROCOPY
