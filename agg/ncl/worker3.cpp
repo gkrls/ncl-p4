@@ -503,7 +503,10 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   int zero_copy = 1;
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
-
+  int sndbuf_size = 128 * 1024 * 1024; // 4MB
+  if (setsockopt(soc, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size)) < 0) {
+      perror("setsockopt SO_SNDBUF failed");
+  }
   if (bind(soc, (sockaddr *)&worker_addr, sizeof(sockaddr)) < 0) {
     worker() << "error: failed to bind socket to " << opt.IP << "."
              << ntohs(worker_addr.sin_port) << '\n';
