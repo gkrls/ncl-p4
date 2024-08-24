@@ -280,7 +280,7 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   }
 
   // Burst tx opt.Window message
-  std::cout << "sending...\n";
+  // std::cout << "sending...\n";
   sendmmsg(soc, msg, opt.Window, 0);
 
   size_t totalReceived = 0;
@@ -289,7 +289,7 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   while (true) {
     // receive burst of opt.Rx messages
-    std::cout << "receiving...\n";
+    // std::cout << "receiving...\n";
     int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
     if (received == 0)
       continue;
