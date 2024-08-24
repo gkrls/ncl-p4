@@ -19,6 +19,9 @@ worker: worker.cpp worker2.cpp worker_utils.h
 	g++ ${CXXFLAGS} -O3 worker.cpp -o worker
 	g++ ${CXXFLAGS} -O3 worker2.cpp -o worker2
 
+worker3: worker3.cpp worker_utils.h
+	g++ ${CXXFLAGS} -O3 -march=native worker3.cpp -o worker3
+
 worker-debug: worker.cpp worker2.cpp worker_utils.h
 	g++ ${CXXFLAGS} -g -DDEBUG worker.cpp -o worker
 	g++ ${CXXFLAGS} -g -DDEBUG worker2.cpp -o worker2

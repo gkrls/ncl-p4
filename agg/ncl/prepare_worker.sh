@@ -41,3 +41,14 @@ for i in $(seq 0 $((N - 1))); do
 done
 
 echo "All processes started and n-tuple rules configured."
+
+# By default freq scaling is on a balanced more. Make it go full out
+sudo echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+
+sudo ethtool -K $INTERFACE rx-udp-gro-forwarding on
+sudo ethtool -K $INTERFACE rx-checksum on
+sudo ethtool -K $INTERFACE tx-checksum-ip-generic on
+sudo ethtool -K $INTERFACE tx-scatter-gather on
+# sudo ethtool -K $INTERFACE rx-gro on
+sudo ethtool -C $INTERFACE adaptive-rx on adaptive-tx on
+sudo ethtool -L $INTERFACE combined 24
