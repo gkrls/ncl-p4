@@ -477,8 +477,8 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   int zero_copy = 1;
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
   // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
-  int sndbuf_size = 64 * 1024 * 1024; // 4MB
-  int rcvbuf_size = 64 * 1024 * 1024; // 4MB
+  int sndbuf_size = 4 * 1024 * 1024; // 4MB
+  int rcvbuf_size = 4 * 1024 * 1024; // 4MB
   if (setsockopt(soc, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size)) < 0) {
       perror("setsockopt SO_SNDBUF failed");
   }
