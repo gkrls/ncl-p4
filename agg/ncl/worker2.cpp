@@ -349,6 +349,7 @@ int main(int argc, char **argv) {
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, interface_name, IFNAMSIZ - 1);
 
+  // create sockets
   for (auto i = 0; i < opt.Threads; ++i) {
     soc[i] = socket(AF_INET, SOCK_DGRAM, 0);
     addr[i].sin_family = AF_INET;

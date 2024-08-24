@@ -276,6 +276,7 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   }
 
   // Burst tx opt.Window message
+  std::cout << "sending...\n";
   sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
 
   size_t totalReceived = 0;
