@@ -192,7 +192,7 @@ int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
   int reuse = 1;
   int zero_copy = 1;
   setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
-  setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
+  // setsockopt(soc, SOL_SOCKET, SO_ZEROCOPY, &zero_copy, sizeof(zero_copy));
 
   worker_addr.sin_family = AF_INET;
   worker_addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
@@ -277,7 +277,7 @@ void Worker(uint16_t tid, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
   // Burst tx opt.Window message
   std::cout << "sending...\n";
-  sendmmsg(soc, msg, opt.Window, MSG_ZEROCOPY);
+  sendmmsg(soc, msg, opt.Window, 0);
 
   size_t totalReceived = 0;
 
