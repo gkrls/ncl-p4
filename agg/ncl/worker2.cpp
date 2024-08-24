@@ -241,7 +241,6 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   sendmmsg(soc, msg, opt.Window, 0);
 
   size_t totalReceived = 0;
-
   uint32_t offsetBy = opt.Window * opt.ValuesPerPacket;
 
   while (true) {

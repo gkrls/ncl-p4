@@ -306,7 +306,7 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   device.sin_port = htons(opt.DevicePort);
 
   if (opt.Pin)
-      pin_thread_to_core(tid);
+      pin_thread_to_core(tid % 16);
 
   uint32_t start, end;
   getIndexRangeForThread(tid, start, end);
@@ -319,12 +319,6 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   auto *ncl = static_cast<ncrt::ncl_h *>(malloc(opt.Window * sizeof(ncrt::ncl_h)));
   auto *iov = static_cast<iovec *>(malloc(2 * opt.Window * sizeof(iovec)));
   auto *msg = static_cast<mmsghdr *>(malloc(opt.Window * sizeof(mmsghdr)));
-
-  if (!ncl || !iov || !msg) {
-      perror("Failed to allocate memory");
-      exit(EXIT_FAILURE);
-  }
-
   memset(ncl, 0, sizeof(ncrt::ncl_h) * opt.Window);
   memset(iov, 0, 2 * opt.Window * sizeof(iovec));
   memset(msg, 0, opt.Window * sizeof(mmsghdr));
@@ -356,6 +350,7 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
     msg[i].msg_hdr.msg_control = nullptr;
     msg[i].msg_hdr.msg_controllen = 0;
     msg[i].msg_hdr.msg_flags = 0;
+    msg[i].msg_len = 0;
 
     offset += opt.ValuesPerPacket;
   }
@@ -372,16 +367,8 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
   while (true) {
       // std::cout << "recvmmsg " << totalReceived << "...\n";
       int received = recvmmsg(soc, msg, opt.Window, 0, nullptr);
-      // if (received == -1) {
-      //     perror("recvmmsg failed");
-      //     break;
-      // }
-      // if (received == 0) {
-      //     continue;
-      //   std::cout << "received 0!\n";
-      // } else {
-      //   std::cout << "received " << received << '\n';
-      // }
+      if (received == 0)
+          continue;
 
       totalReceived += received;
       if (totalReceived >= opt.PacketsPerThread) {
@@ -391,6 +378,11 @@ void Worker(uint16_t tid, int soc, ncrt::ncl_h *wnd, uint8_t *startingVersion,
 
       for (auto i = 0; i < received; ++i) {
           auto *ih = (ncrt::ncl_h *)iov[i * 2].iov_base;
+
+          ih->ncp.h_src = opt.Rank;
+          ih->ncp.h_dst = 0;
+          ih->ncp.d_src = 0;
+          ih->ncp.d_dst = 1;
 
           version = 1 - ih->agg.ver;
           offset = ntohl(ih->agg.offset) + offsetBy;
