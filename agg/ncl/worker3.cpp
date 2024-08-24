@@ -442,6 +442,10 @@ uint64_t AllReduce(uint32_t s, int *sockets, ncrt::ncl_h *windows, uint8_t *vers
 int create_socket_for_worker(uint16_t tid, sockaddr_in &worker_addr,
                              sockaddr_in &device_addr) {
   auto soc = socket(AF_INET, SOCK_DGRAM, 0);
+  if (soc < 0) {
+    perror("Socket creation failed");
+    return 1;
+  }
 
   worker_addr.sin_family = AF_INET;
   worker_addr.sin_addr.s_addr = inet_addr(opt.IP.c_str());
